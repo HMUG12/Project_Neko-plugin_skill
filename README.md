@@ -1,6 +1,6 @@
 # N.E.K.O 插件开发 Skill
 
-> 一套面向 [N.E.K.O](https://github.com) 插件开发的skil辅助，Agent编辅助，从程搭建到避坑上线，全流程覆盖。
+> 一套面向 [N.E.K.O](https://github.com/Project-N-E-K-O/N.E.K.O) 插件开发的skil辅助，Agent编辅助，从程搭建到避坑上线，全流程覆盖。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![N.E.K.O SDK](https://img.shields.io/badge/N.E.K.O_SDK-0.1.x-blue.svg)]()
