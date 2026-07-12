@@ -1,4 +1,5 @@
 # N.E.K.O 插件开发 Skill
+<img width="1024" height="1024" alt="20260712034620-16e860dc-82a53794" src="https://github.com/user-attachments/assets/ab3687ce-3fc4-4ba8-aff5-9882ef28f129" />
 
 > 一套面向 [N.E.K.O](https://github.com) 插件开发的skil辅助，Agent编辅助，从程搭建到避坑上线，全流程覆盖。
 
@@ -14,7 +15,7 @@
 
 ## 这是什么
 
-本仓库是一个 **TRAE Skill**（技能包），用于在 TRAE 等 AI IDE 中协助开发 N.E.K.O 桌面助手插件。当你在对话中提到「N.E.K.O 插件」「plugin.toml」「@plugin\_entry」等关键词，AI 会自动加载本技能，按既定规范给你写代码、查 bug、做重构。
+本仓库是一个 **TRAE Skill**（技能包），用于在 TRAE 等 AI IDE 中协助开发 N.E.K.O 插件。当你在对话中提到「N.E.K.O 插件」「plugin.toml」「@plugin\_entry」等关键词，AI 会自动加载本技能，按既定规范给你写代码、查 bug、做重构。
 
 **底层是 4 个实战插件 + 主程序逆向**：
 
