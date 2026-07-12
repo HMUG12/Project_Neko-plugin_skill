@@ -12,14 +12,21 @@
 | `Stack` | 垂直堆叠布局 | ✅ |
 | `Grid` | 网格布局 | ✅ |
 | `Text` | 文本显示（color: primary/secondary/muted） | ✅ |
+| `Heading` | 标题文本（level={1-6}） | ✅ |
 | `Divider` | 分割线 | ✅ |
 | `Switch` | 开关（checked/onChange） | ✅ |
 | `Input` | 输入框（type/value/onChange） | ✅ |
+| `Select` | 下拉选择（value/onChange/options） | ✅ |
+| `Slider` | 滑块（value/onChange/min/max/step） | ✅ |
 | `Textarea` | 多行文本（value/onChange） | ✅ |
 | `StatCard` | 统计卡片（title/value） | ✅ |
 | `ActionButton` | 动作按钮（action/values/children） | ✅ |
+| `ActionForm` | 表单组件（action/schema/fields/onResult） | ✅ |
 | `Field` | 表单字段（label/children） | ✅ |
-| `Alert` | 提示框（title/children） | ✅ |
+| `Alert` | 提示框（variant/title/children） | ✅ |
+| `StatusBadge` | 状态标签（variant/label） | ✅ |
+| `EmptyState` | 空状态占位（icon/title/description） | ✅ |
+| `Tip` | 提示文本块 | ✅ |
 | `DataTable` | 数据表格（columns/data/rowKey） | ✅ |
 | `useLocalState` | 本地状态 Hook | ✅ |
 
@@ -151,6 +158,68 @@ export default function SettingsPanel(props: PluginSurfaceProps<State>) {
 }
 ```
 
+## 新增组件用法
+
+### Select 下拉选择
+
+```tsx
+<Field label="地域">
+  <Select
+    value={region}
+    onChange={(v: string) => setRegion(v)}
+    options={[
+      { value: "cn-beijing", label: "华北2（北京）" },
+      { value: "cn-shanghai", label: "华东2（上海）" },
+    ]}
+  />
+</Field>
+```
+
+### Slider 滑块
+
+```tsx
+<Field label={`语速：${speechRate.toFixed(1)}x`}>
+  <Slider
+    value={speechRate}
+    onChange={(v: number) => setSpeechRate(v)}
+    min={0.5}
+    max={2.0}
+    step={0.1}
+  />
+</Field>
+```
+
+### StatusBadge 状态标签
+
+```tsx
+<StatusBadge variant="success" label="当前使用" />
+// variant 支持: "success" / "warning" / "error" / "info"
+```
+
+### EmptyState 空状态
+
+```tsx
+<EmptyState icon="music" title="暂无数据" description="去创建页面开始吧！" />
+// icon 可选: "music" / "folder" / "mic" / "settings" / "file" 等
+```
+
+### Tip 提示文本
+
+```tsx
+<Tip>
+  💡 提示内容，支持 <a href="https://..." target="_blank" style={{ color: "#3b82f6" }}>链接</a> 和换行。
+</Tip>
+```
+
+### Heading 标题
+
+```tsx
+<Heading level={4}>🎵 歌词同步</Heading>
+// level 1-6，对应 h1-h6 级别
+```
+
+---
+
 ## 关键模式
 
 ### 1. Action 缓存
@@ -241,6 +310,43 @@ function fmtSize(bytes: number): string {
   return bytes + " B"
 }
 ```
+
+### 9. api.call() — 直接调用后端方法
+
+除了 `ActionButton` 和 `ActionForm`，还可以通过 `api.call()` 直接调用 `@ui.action` 方法：
+
+```tsx
+// 在事件处理函数中直接调用后端方法
+const handleDeleteSong = (recordId: string) => {
+  api.call("delete_song", { record_id: recordId }).then(() => api.refresh())
+}
+
+const handleDeleteVoice = (voiceId: string) => {
+  if (confirm("确定要删除吗？")) {
+    api.call("delete_custom_voice", { voice_id: voiceId }).then(() => api.refresh())
+  }
+}
+
+// 在按钮点击事件中使用
+<button onClick={() => handleDeleteSong(song.id)} style={btnSmStyle}>
+  🗑️ 删除
+</button>
+```
+
+**`api.call()` 的特点**：
+- 参数格式：`api.call("action_id", { param1: value1, ... })`
+- 返回 Promise，需要 `.then()` 或 `await`
+- 调用后通常需要 `.then(() => api.refresh())` 刷新面板数据
+- 适用于不需要表单的简单操作（删除、刷新列表等）
+- 不需要在 Python 端额外配置，只要方法有 `@ui.action` 装饰器即可
+
+**三种 UI→后端调用方式对比**：
+
+| 方式 | 适用场景 | 参数传递 | 刷新方式 |
+|------|---------|---------|---------|
+| `ActionButton` | 无表单输入的操作 | `values={{ config: {...} }}` | `onResult` 中手动 `api.refresh()` |
+| `ActionForm` | 需要用户输入的表单 | schema + fields 定义 | `onResult` 中手动 `api.refresh()` |
+| `api.call()` | 事件处理函数中调用 | 直接传参 `{param: value}` | `.then(() => api.refresh())` |
 
 ## Python 端对应的 UI 方法
 

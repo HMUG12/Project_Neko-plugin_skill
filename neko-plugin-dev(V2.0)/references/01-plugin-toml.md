@@ -26,6 +26,11 @@ auto_start = true    # 是否随 N.E.K.O 自动启动
 [plugin.store]
 enabled = true       # 是否启用持久化存储
 
+[plugin.dependencies]
+# ⚠️ 使用内联表格式，非列表格式！见 07-gotchas.md #12
+openai = ">=1.0.0"
+requests = ">=2.28"
+
 [plugin.database]
 enabled = true       # 是否启用 SQLite 数据库（需要才能用 self.db）
 
@@ -151,3 +156,16 @@ const [scanPathsText, setScanPathsText] = useLocalState(
     () => (state.config?.scan_paths || []).join("\n")
 )
 ```
+
+### 6. Python 第三方依赖声明
+
+```toml
+[plugin.dependencies]
+dashscope = ">=1.20.0"
+requests = ">=2.28"
+```
+
+- **格式要求**：使用内联表格式（`key = "value"`），不是列表格式（`python = [...]`）
+- N.E.K.O 会尝试在安装插件时自动安装依赖
+- 如果用户环境未安装，插件代码应做 try/except 导入（见 13-cloud-api-integration.md）
+- 使用 pip 兼容的版本规范

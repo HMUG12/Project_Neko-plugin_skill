@@ -1,11 +1,11 @@
 ---
 name: "neko-plugin-dev"
-description: "N.E.K.O 插件开发完整指南。涵盖 plugin.toml 配置、Python 后端（装饰器/生命周期/数据库）、UI 设置面板、AI 友好设计、权限体系、性能优化、单元测试、部署同步和 17 个已知陷阱。当用户需要开发、修改、调试 N.E.K.O 插件或创建新插件时调用此技能。"
+description: "N.E.K.O 插件开发完整指南。涵盖 plugin.toml 配置、Python 后端（装饰器/生命周期/数据库/report_status/data_path/双装饰器/@llm_tool/PluginRouter）、UI 设置面板（Slider/Select/StatusBadge/ActionForm/api.call）、AI 友好设计、权限体系、性能优化、单元测试、部署同步和 45 个已知陷阱。新增 NEKO 主程序深度逆向分析十篇（生命周期/ZMQ/Push Message/Bus/NekoPluginBase/PluginRouter/Logger/Store-DB/i18n/Config 内部机制）。当用户需要开发、修改、调试 N.E.K.O 插件或创建新插件时调用此技能。"
 ---
 
 # N.E.K.O 插件开发 Skill
 
-> 基于 `file_manager` 插件实战踩坑总结，从零到一，涵盖所有核心模式。
+> 基于 `file_manager` + `ai_singer` + `music_pusher` + `qq_auto_reply` 多插件实战 + N.E.K.O-main 主程序深度逆向分析，从零到一，涵盖 38 个主题。
 
 ---
 
@@ -29,7 +29,7 @@ my_plugin/
 
 ---
 
-## 10 条铁律
+## 20 条铁律
 
 1. **文件名全小写 + 下划线** — 目录名与 `entry` 的包名严格一致
 2. **Python 文件无 BOM** — `UTF-8 without BOM`，否则 `SyntaxError`
@@ -37,10 +37,20 @@ my_plugin/
 4. **`**_`** — 所有 `@lifecycle` 必须包含
 5. **启动 < 10 秒** — 耗时操作丢 `asyncio.create_task()`
 6. **无 `executemany`** — 逐行 `await session.execute()`
-7. **手动同步** — 工作区改完必须同步到部署目录
+7. **手动同步 + 删 `__pycache__`** — 工作区改完必须同步到部署目录，**并删除目标目录的 `__pycache__/`**，否则旧代码继续运行且无报错！
 8. **权限默认 `false`** — 安全优先，总开关 + 逐操作授权
 9. **AI 需要绝对路径** — 拒绝非绝对路径，错误消息中引导搜索
 10. **磁盘 I/O 用 `asyncio.to_thread`** — 不阻塞事件循环
+11. **`plugin.toml` dependencies 用内联表** — `openai = ">=1.0.0"` 而非 `python = ["openai>=1.0.0"]`
+12. **`@plugin_entry` 在上，`@ui.action` 在下** — 双装饰器叠加时顺序不能反
+13. **`@llm_tool` 用 `*,` 强制 keyword-only** — `async def my_tool(self, *, param: str)`，万一传进位置参数会立刻报错
+14. **Router 在 `__init__` 中注册** — `self.include_router()` 必须在 `super().__init__(ctx)` 之后、`__init__` 返回之前调用
+15. **第三方库惰性导入 + 错误缓存** — `try/except ImportError` 失败后缓存错误，后续调用重放错误而不重试 import
+16. **跨插件调用用 `call_entry`** — 不要直接 import 其他插件的类，松耦合 + 防御性调用
+17. **on_init 不调其他插件** — `on_init` 时其他插件可能尚未加载，跨插件调用应在 `on_start` 中进行
+18. **push_message 大文件用 URL** — 大文件 base64 编码后体积膨胀 33%，用 `file://` URL 代替 `data:` 传递
+19. **Router entry 设 prefix** — 多个 Router 必须有不同 prefix 避免 entry ID 冲突
+20. **Bus 查询用惰性链式** — `get_recent().filter().limit()` 而非多次 `reload()`，减少 ZMQ 往返
 
 ---
 
@@ -48,7 +58,10 @@ my_plugin/
 
 ```
 1.☐BOM? 2.☐目录名一致? 3.☐_ctx=None? 4.☐**_? 5.☐executemany?
-6.☐keywords? 7.☐database.enabled? 8.☐同步了? 9.☐重启了? 10.☐rstrip(os.sep)?
+6.☐keywords? 7.☐database.enabled? 8.☐同步+删__pycache__了? 9.☐重启了? 10.☐rstrip(os.sep)?
+11.☐dependencies格式? 12.☐双装饰器顺序? 13.☐@llm_tool签名有*? 14.☐Router在__init__中注册?
+15.☐第三方导入有错误缓存? 16.☐跨插件用call_entry而非import?
+17.☐on_init不调其他插件? 18.☐大文件用URL而非base64? 19.☐Router有prefix? 20.☐Bus用惰性链式?
 ```
 
 ---
@@ -656,9 +669,75 @@ $c = [System.IO.File]::ReadAllBytes('__init__.py')
 | 8 | 根目录路径 Bug | 路径不匹配 | `rstrip(os.sep)` |
 | 9 | 旧文件覆盖 | 行为不变 | 同步到部署目录 |
 | 10 | AI 乱拼路径 | 路径错误 | 拒绝非绝对路径 + 引导 |
+| 11 | `__pycache__` 缓存 | 改代码不生效 | 删除 `__pycache__/` |
+| 12 | dependencies 格式 | schema 警告 | 内联表格式 |
+| 13 | 双装饰器顺序 | 行为异常 | `@plugin_entry` 在上 |
+| 14 | LLM 跳过前置检查 | 直接调核心入口 | description 强提示 |
+| 15 | 惰性导入无缓存 | 反复 import 失败 | 错误缓存 + 重放 |
+| 16 | on_init 调其他插件 | 返回 PluginNotFound | 移到 on_start |
+| 17 | 大文件 base64 超时 | ZMQ 消息超限 | 用 file:// URL |
+| 18 | Router 无 prefix | Entry ID 冲突 | router.set_prefix() |
+| 19 | Bus 多次 reload | 响应慢/ZMQ 往返多 | 惰性链式 filter().limit() |
+| 20 | BusList 忘 await | 迭代返回空 | await reload() 或设置 _ctx |
 
 ---
 
 ## 参考文档
 
-本 Skill 目录下 `references/` 包含 12 篇详细参考文档，覆盖每个主题的完整实现和代码示例。详见各文档的检查清单和实战代码。
+本 Skill 目录下 `references/` 包含 38 篇详细参考文档，覆盖每个主题的完整实现和代码示例：
+
+### 基础篇（必读）
+- [01-plugin-toml](references/01-plugin-toml.md) — plugin.toml 完整参考
+- [02-python-plugin](references/02-python-plugin.md) — Python 后端核心指南
+- [03-ui-settings](references/03-ui-settings.md) — UI 设置面板开发
+- [04-i18n](references/04-i18n.md) — 国际化指南
+
+### 进阶篇（推荐）
+- [08-ai-friendly-design](references/08-ai-friendly-design.md) — AI 友好设计
+- [09-permission-system](references/09-permission-system.md) — 权限体系
+- [10-performance](references/10-performance.md) — 性能优化
+- [11-undo-and-logging](references/11-undo-and-logging.md) — 撤销与日志
+
+### 实战篇（基于 ai_singer 插件）
+- [13-cloud-api-integration](references/13-cloud-api-integration.md) — 云端 API 集成（SDK 导入、端点配置、错误诊断、健康检查、保存后验证）
+- [14-multi-panel-architecture](references/14-multi-panel-architecture.md) — 多面板架构（双面板+双Context、配置共享、标签页组织）
+- [15-rich-ui-components](references/15-rich-ui-components.md) — 富交互 UI 组件（LyricPlayer、ActionForm、内联样式、条件渲染）
+
+### 实战篇·二（基于 ai_singer V0.6 重构）
+- [16-backend-simplification](references/16-backend-simplification.md) — 后端精简与迁移（双后端→单后端迁移策略、代码清理清单、配置漂移防范、向后兼容处理）
+- [17-pyc-cache-trap](references/17-pyc-cache-trap.md) — `__pycache__` 缓存陷阱（代码改了但不生效的根本原因、日志诊断法、预防方案）
+- [18-streaming-output](references/18-streaming-output.md) — 流式输出与进度推送（逐句处理循环、push_message/report_status、音频合并、viseme 口型同步）
+- [19-llm-workflow-design](references/19-llm-workflow-design.md) — LLM 对话工作流设计（check_setup 前置检查、多入口编排、next_action 指导、description 三要素）
+
+### 实战篇·三（基于原指南 + 第三方插件分析）
+- [20-plugin-router](references/20-plugin-router.md) — PluginRouter 拆分大型插件（多入口点模块化、共享逻辑、Router 能力访问、前缀命名、完整示例）
+- [21-llm-tool-registration](references/21-llm-tool-registration.md) — @llm_tool LLM 工具注册（装饰器详解、架构分层、错误返回、命令式 API、生命周期与时序、main_server 重启应对）
+- [22-static-ui-plugin](references/22-static-ui-plugin.md) — 纯前端/Static UI 插件（RPC 通信机制、状态管理、后台轮询、文件上传、Three.js 3D 集成、音频可视化、Toast 系统）
+- [23-external-protocol-integration](references/23-external-protocol-integration.md) — 外部协议集成与消息积压管理（OneBot/NapCat 连接、积压数据结构、回复概率控制、引导式安装、信任体系、WebSocket 重连）
+
+### 实战篇·四（基于三插件深度逆向分析）
+- [24-error-handling-patterns](references/24-error-handling-patterns.md) — 错误处理与诊断模式大全（惰性导入+错误缓存、多级关键字诊断、轮询重试、分层 UI 渲染、Ok/Err 分层返回、按钮防重复、Toast 通知、RPC 超时、错误码设计规范）
+- [25-concurrency-race-conditions](references/25-concurrency-race-conditions.md) — 并发与竞态条件（锁外 I/O、冻结取消、防重入刷新、消息积压上限、请求去重、WebSocket 指数退避重连、回复概率控制）
+- [26-backend-design-pattern](references/26-backend-design-pattern.md) — Backend 对象设计模式（惰性导入+错误缓存、配置传播与_log注入、健康检查多时机、同步/异步桥接、多后端共存、完整模板）
+- [27-audio-processing-pipeline](references/27-audio-processing-pipeline.md) — 音频处理管线（纯 Python WAV 合并无 ffmpeg 依赖、Viseme 口型同步数据生成、时长估算三级回退、双轨播放架构、句间换气停顿算法）
+- [28-inter-plugin-communication](references/28-inter-plugin-communication.md) — 插件间通信（call_entry 跨插件调用、依赖声明与检查、事件总线 pub/sub、共享数据模式、版本兼容回退、防御性调用）
+
+### 实战篇·五（基于 N.E.K.O 主程序深度逆向分析 — 框架层）
+- [29-plugin-lifecycle-internals](references/29-plugin-lifecycle-internals.md) — 插件生命周期内部机制（7 阶段状态机、ZMQ 进程通信架构、load/init/start/run/stop/unload 全流程、子进程管理、常见生命周期陷阱）
+- [30-push-message-internals](references/30-push-message-internals.md) — Push Message 深度解析（visibility/ai_behavior 两轴正交模型、Parts 结构详解、coalesce_key 消息合并、旧版→v2 迁移映射、UI Action 媒体播放、内部 base64 编码机制）
+- [31-bus-system-internals](references/31-bus-system-internals.md) — Bus 总线系统深度解析（惰性查询容器 BusList、计划节点树 GetNode/FilterNode/SortNode、五条总线 messages/events/lifecycle/conversations/memory、Revision 追踪、Watch 变更订阅、集合操作 union/intersect/difference）
+- [32-nekopluginbase-internals](references/32-nekopluginbase-internals.md) — NekoPluginBase 内部机制（双层继承 shared/sdk、构造函数全流程、Entry 收集、Router 绑定、SDK 上下文封装、LLM Tool 注册流程、Static UI、PluginStore/PluginDatabase/PluginStatePersistence）
+- [33-pluginrouter-entry-internals](references/33-pluginrouter-entry-internals.md) — PluginRouter 与 Entry 系统（懒解析策略、动态 Entry 注册、before/after/around_entry 钩子、hook 系统、quick_action 快捷操作、Entry 分发全流程、装饰器叠加规则、闭包陷阱）
+
+### 实战篇·六（基于 N.E.K.O 主程序深度逆向分析 — 基础设施层）⭐ 新增
+- [34-logger-system-internals](references/34-logger-system-internals.md) — Logger 日志系统内部机制（PluginLoggerAdapter 双风格兼容、loguru braces/stdlib % 格式、RobustLoggerConfig 落地、Root Bridge 第三方日志捕获、敏感信息脱敏、懒解析机制）
+- [35-store-database-internals](references/35-store-database-internals.md) — PluginStore 与 PluginDatabase 内部机制（JSON 键值存储 vs SQLite 关系存储、全量加载/每次写入持久化、CRUD 完整模式、批量插入分批提交、PluginStatePersistence、data_path 私有目录、持久化策略选择决策树）
+- [36-i18n-internals](references/36-i18n-internals.md) — i18n 国际化引擎内部机制（回退链：用户语言→默认语言→default→key、参数插值 str.format()、懒加载翻译文件、tr 函数在装饰器中的使用、命名规范与最佳实践）
+- [37-zmq-transport-internals](references/37-zmq-transport-internals.md) — ZMQ 进程通信协议内部机制（PAIR socket 双向通信、JSON 序列化协议、12 种命令类型及超时配置、HostTransport/ChildTransport 实现、CALL_ENTRY 完整调用链路、子进程崩溃与自动重启、大数据传输优化）
+- [38-config-system-internals](references/38-config-system-internals.md) — 插件配置系统内部机制（plugin.toml [settings] / self.config / self.store 三层关系、合并优先级、update_own_config 点号路径、配置漂移防范与迁移策略、DEFAULT_CONFIG 完整模板、config_change 钩子注意事项）
+
+### 工程篇（开发流程）
+- [05-testing](references/05-testing.md) — 单元测试
+- [06-deployment](references/06-deployment.md) — 部署同步
+- [07-gotchas](references/07-gotchas.md) — 踩坑大全（45个已知陷阱）
+- [12-master-checklist](references/12-master-checklist.md) — 汇总检查清单
