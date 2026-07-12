@@ -398,6 +398,8 @@ Get-ChildItem -Path $dst -Recurse -Filter "__pycache__" -Directory | Remove-Item
 ***
 
 ## 贡献与反馈
+同步开发：
+<img width="1024" height="1024" alt="dcd50bbd9efec004394e2996dd3d3938" src="https://github.com/user-attachments/assets/1dfa98ac-2738-418c-89f9-bc05d96edf66" />
 
 本技能基于实战持续迭代，欢迎提 Issue / PR：
 
