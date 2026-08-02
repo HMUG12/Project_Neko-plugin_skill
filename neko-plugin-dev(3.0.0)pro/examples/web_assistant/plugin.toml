@@ -1,0 +1,26 @@
+[plugin]
+id = "web_assistant"
+name = "网页助手"
+description = "示例插件：演示深函数封装、设置面板、@llm_tool 联网、SSRF 守卫与防御性入口。整合本 skill 40–45 的融合精髓。"
+short_description = "Demo: deep-module entry, settings panel, @llm_tool, SSRF guard."
+keywords = ["网页", "web", "搜索", "search", "示例", "demo"]
+version = "0.1.0"
+entry = "plugins.web_assistant:WebAssistantPlugin"
+
+[plugin.author]
+name = "neko-plugin-dev skill (示例)"
+
+[plugin.ui]
+[[plugin.ui.panel]]
+id = "main"
+context = "dashboard"
+label = "网页助手"
+permissions = []
+
+# 配置段：与 __init__.py 中 self.config.dump() 读取的 key 对应
+[web_assistant]
+firecrawl_api_key = ""      # 用户填入（真实插件推荐用 SettingsField(hot=True) 自动出面板，见 44 §3）
+firecrawl_api_url = ""      # 自建/代理地址，留空用官方
+default_city = ""           # 默认城市
+search_limit = 5            # 搜索默认返回条数
+request_timeout = 30        # 单页超时（秒，预留）
