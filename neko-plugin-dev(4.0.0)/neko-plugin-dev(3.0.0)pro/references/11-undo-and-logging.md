@@ -144,7 +144,7 @@ except Exception:
 ### UI 中显示撤销步数
 
 ```python
-@ui.context("settings")
+@ui.context(id="settings")
 async def settings_context(self):
     return {
         "undo_steps": len(self._undo_stack),  # 传给 UI
@@ -234,7 +234,7 @@ async def file_operation(self, action, source_path, dest_path, ...):
 
 ```python
 @plugin_entry(id="get_operation_logs", name="操作日志")
-async def get_operation_logs(self, limit=20, only_dangerous=False,, **_):
+async def get_operation_logs(self, limit=20, only_dangerous=False, **_):
     session = unwrap(await self.db.session())
     try:
         where = "WHERE is_dangerous=1" if only_dangerous else ""

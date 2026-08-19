@@ -5,7 +5,7 @@ description = "示例插件：演示深函数封装、设置面板、@llm_tool �
 short_description = "Demo: deep-module entry, settings panel, @llm_tool, SSRF guard."
 keywords = ["网页", "web", "搜索", "search", "示例", "demo"]
 version = "0.1.0"
-entry = "plugins.web_assistant:WebAssistantPlugin"
+entry = "plugin.plugins.web_assistant:WebAssistantPlugin"
 
 [plugin.author]
 name = "neko-plugin-dev skill (示例)"

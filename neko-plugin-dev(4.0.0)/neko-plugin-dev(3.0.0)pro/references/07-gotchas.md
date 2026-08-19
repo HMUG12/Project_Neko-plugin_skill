@@ -30,7 +30,7 @@ $newContent = $content[3..$content.Length]
 
 **现象**：`PluginEntryDirectoryMismatch` 错误
 
-**原因**：`plugin.toml` 中 `entry = "plugins.file_manager:..."` 要求目录名为 `file_manager`，但实际目录是 `FileManager`。
+**原因**：`plugin.toml` 中 `entry = "plugin.plugins.file_manager:..."` 要求目录名为 `file_manager`，但实际目录是 `FileManager`。
 
 **修复**：将目录重命名为与 `entry` 中完全一致的小写名。
 
@@ -810,7 +810,7 @@ def _on_check(self, **_):
 13. ☐ `save` 操作的数值参数默认值能区分"未传入"和"传入0"吗？
 14. ☐ `update_own_config` 只传变更项，`on_config_change` 用 `.get()` + 默认值了吗？
 15. ☐ `plugin.toml` dependencies 用了内联表格式（`key = "value"`）而非列表格式吗？ ⭐
-16. ☐ 双装饰器叠加时 `@plugin_entry` 在上、`@ui.action` 在下吗？ ⭐
+16. ☐ 双装饰器叠加时 `@ui.action` 在上、`@plugin_entry` 在下吗？ ⭐
 17. ☐ 核心入口的 `description` 明确写了前置条件（"必须先调用 check_setup"）吗？ ⭐
 18. ☐ 不同 Router 的 entry id 全局唯一吗？（或用 `prefix` 隔离） ⭐
 19. ☐ `@llm_tool` 方法签名用了 `*,` 强制 keyword-only 吗？ ⭐

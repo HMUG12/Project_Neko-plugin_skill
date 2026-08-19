@@ -47,7 +47,7 @@ async def on_startup(self, **_):
 
 ```python
 @plugin_entry(id="do_something")
-async def do_something(self,, **_):
+async def do_something(self, **_):
     # 不需要每次读取配置，使用实例变量（在 on_startup 中已加载）
     if not self.enable_ops:
         return Err(SdkError("操作未启用"))
@@ -62,8 +62,12 @@ async def do_something(self,, **_):
 
 ```python
 # 在 UI action 中更新配置
-@ui.action(id="update_settings")
-async def update_settings(self, config: dict = None,, **_):
+@ui.action(
+    label=tr("actions.update.label", default="保存设置"),
+    tone="primary",
+    refresh_context=True,
+)
+async def update_settings(self, config: dict = None, **_):
     if not isinstance(config, dict):
         return Err(SdkError("config 必须是对象"))
 

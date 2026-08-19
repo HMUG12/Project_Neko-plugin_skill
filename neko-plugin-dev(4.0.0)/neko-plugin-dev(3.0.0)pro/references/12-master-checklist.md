@@ -20,7 +20,7 @@
 
 - [ ] 所有 `@lifecycle` 方法包含 `**_`
 - [ ] 所有 `@plugin_entry` / `@ui.action` 用 `self.ctx` 取上下文（不需要 `_ctx=None` 参数）
-- [ ] `@plugin_entry` + `@ui.action` 双装饰器叠加时，`@plugin_entry` 在上
+- [ ] `@plugin_entry` + `@ui.action` 双装饰器叠加时，`@ui.action` 在上、`@plugin_entry` 在下
 - [ ] 没有 `keywords=` 参数在 `@plugin_entry` 中
 - [ ] 没有 `executemany()` 调用
 - [ ] `on_startup` 总耗时 < 10 秒

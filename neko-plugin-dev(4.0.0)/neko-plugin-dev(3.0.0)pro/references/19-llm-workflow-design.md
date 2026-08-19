@@ -71,7 +71,7 @@ LLM 理解意图 → 匹配到 check_setup entry
     input_schema={"type": "object", "properties": {}},
     llm_result_fields=["ready", "mimo_ok", "mimo_voice", "missing", "next_action"],
 )
-async def check_setup(self,, **_):
+async def check_setup(self, **_):
     mimo_ok, mimo_msg = False, ""
     if self._mimo:
         mimo_ok, mimo_msg = await self._mimo.health_check()
@@ -180,17 +180,17 @@ async def check_setup(self,, **_):
 ```python
 # sing_cover 和 sing_live 直接委托给 sing，避免重复代码
 
-@plugin_entry(id="sing_cover", ...)
 @ui.action(label="🎤 翻唱歌曲", ...)
-async def sing_cover(self, song_name="", artist="", lyrics="", mimo_voice="",, **__):
+@plugin_entry(id="sing_cover", ...)
+async def sing_cover(self, song_name="", artist="", lyrics="", mimo_voice="", **_):
     if not lyrics.strip():
         return Err(SdkError("翻唱需要提供歌曲歌词。请先联网搜索该歌曲的完整歌词。"))
     full_name = f"{artist} - {song_name}" if artist else song_name
     return await self.sing(song_name=full_name, lyrics=lyrics, mimo_voice=mimo_voice)
 
-@plugin_entry(id="sing_live", ...)
 @ui.action(label="🎭 流式演唱", ...)
-async def sing_live(self, song_name="", lyrics="", style="", voice="",, **__):
+@plugin_entry(id="sing_live", ...)
+async def sing_live(self, song_name="", lyrics="", style="", voice="", **_):
     return await self.sing(song_name=song_name, lyrics=lyrics, style=style, mimo_voice=voice)
 ```
 
@@ -258,6 +258,11 @@ llm_result_fields=["success", "song_name", "total_lines", "lines_sung", "merged_
 ## 19.8 双装饰器模式（plugin_entry + ui.action）
 
 ```python
+@ui.action(
+    label=tr("actions.sing.label", default="🎤 开始演唱"),
+    tone="primary",
+    refresh_context=True,
+)
 @plugin_entry(
     id="sing",
     name="N.E.K.O 唱歌",
@@ -265,17 +270,12 @@ llm_result_fields=["success", "song_name", "total_lines", "lines_sung", "merged_
     input_schema={...},
     llm_result_fields=[...],
 )
-@ui.action(
-    label=tr("actions.sing.label", default="🎤 开始演唱"),
-    tone="primary",
-    refresh_context=True,
-)
 async def sing(self, ...):
     ...
 ```
 
 **双装饰器的规则**：
-1. `@plugin_entry` 在**上**，`@ui.action` 在**下**
+1. `@ui.action` 在**上**，`@plugin_entry` 在**下**（官方示例顺序，Python 自下而上执行：`@plugin_entry` 先应用、`@ui.action` 后应用包裹其上）
 2. `@plugin_entry` 定义 LLM 如何调用（description、input_schema）
 3. `@ui.action` 定义 UI 如何展示（label、tone、按钮位置）
 4. 两个装饰器共享同一个方法体
@@ -348,6 +348,6 @@ description=(
 - [ ] 后端不可用时的错误消息引导用户如何配置
 - [ ] 变体入口委托给核心入口，避免重复代码
 - [ ] `llm_result_fields` 列出 LLM 需要的关键字段
-- [ ] 双装饰器叠加时 `@plugin_entry` 在上
+- [ ] 双装饰器叠加时 `@ui.action` 在上、`@plugin_entry` 在下
 - [ ] 在多个相关入口的 description 中重复描述工作流
 - [ ] 错误消息包含三要素：发生了什么 + 为什么 + 怎么做

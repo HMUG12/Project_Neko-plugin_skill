@@ -1,6 +1,6 @@
 # N.E.K.O 插件开发 Skill 指南
 
-> 基于 `file_manager` + `ai_singer` + `music_pusher` + `qq_auto_reply` 多插件实战 + N.E.K.O-main 主程序深度逆向分析，从零到一，从入门到避坑，涵盖 50 个主题（含 1 篇统领工作流 00 + 10 篇融合：8 篇外部开源 skill 最佳实践（40–43 + 46–49）+ 1 篇本地插件架构逆向（44）+ 1 篇融合速查（45）），并附 1 个端到端可运行示例插件（examples/）。
+> 基于 `file_manager` + `ai_singer` + `music_pusher` + `qq_auto_reply` 多插件实战 + N.E.K.O-main 主程序深度逆向分析 + 插件市场 31 个已上架插件源码逆向，从零到一，从入门到避坑，涵盖 51 个主题（含 1 篇统领工作流 00 + 11 篇融合：8 篇外部开源 skill 最佳实践（40–43 + 46–49）+ 1 篇本地插件架构逆向（44）+ 1 篇融合速查（45）+ 1 篇市场插件逆向工程（50）），并附 1 个端到端可运行示例插件（examples/）。
 
 ---
 
@@ -33,7 +33,7 @@ Copy-Item '.\*' 'C:\Users\Admin\AppData\Local\N.E.K.O\plugins\my_plugin\' -Recur
 
 | 编号 | 文档 | 内容 | 何时需要 |
 |------|------|------|---------|
-| 00 | [开发协作协调器](00-development-coordinator.md) | 五阶段工作流 + 状态持久化（`.skill对话构建缓存/`）+ 错误回滚 + 7 条元规则；已适配本技能（每阶段挂接 01–49、RULES.md 注入 20 铁律 + F1–F8） | **用户说"开发插件/启动开发协作"时最先跑** |
+| 00 | [开发协作协调器](00-development-coordinator.md) | 五阶段工作流 + 状态持久化（`.skill对话构建缓存/`）+ 错误回滚 + 7 条元规则；已适配本技能（每阶段挂接 01–50、RULES.md 注入 20 铁律 + F1–F9） | **用户说"开发插件/启动开发协作"时最先跑** |
 
 ### 基础篇（必读）
 
@@ -132,6 +132,7 @@ Copy-Item '.\*' 'C:\Users\Admin\AppData\Local\N.E.K.O\plugins\my_plugin\' -Recur
 | 47 | [LLM 路由与成本优化](47-llm-routing-cost-optimization.md) | 复杂度分类→三档、验证器门控级联、Jaccard 语义缓存、飞行中去重（NadirClaw + llm-router） | 对接多模型/外部 LLM、想省钱省 token 时 |
 | 48 | [提示词压缩与 PII 脱敏](48-prompt-compression-pii-redaction.md) | 4 层 token 成本模型、正则压缩 15–70%、本地信用卡/邮箱/SSN/API Key 红挡（token-saviour + prompthakcer） | 外发 LLM/API 前想降费+防泄露时 |
 | 49 | [角色陪伴型状态机](49-neko-companion-state-machine.md) | 好感度状态机、聊天指令、动作/情绪标签、主动聊天（neko-skill，已剔除越狱） | 做陪伴/角色扮演 persona 插件时 |
+| 50 | [市场插件逆向工程](50-market-plugin-reverse-engineering.md) | 插件市场 31 个已上架插件源码全景：六类插件最佳实践（系统自动化/邮件/搜索/教育OCR/游戏/外部程序桥接）+ 三合一装饰器 + 后台轮询 + 可抄片段 + 踩坑表 | **想抄真实成功插件的模式/写复杂插件前** |
 
 ---
 
@@ -178,12 +179,17 @@ Copy-Item '.\*' 'C:\Users\Admin\AppData\Local\N.E.K.O\plugins\my_plugin\' -Recur
 | 集成外部/联网能力时 | 42 (网页数据集成) + 13 (云端集成) + 26 (Backend设计) |
 | 涉及外部调用/文件/敏感操作时 | 43 (安全加固) + 09 (权限) + 24 (错误处理) |
 | 设计大型/真实插件架构时 | 44 (本地插件架构逆向) + 20 (Router拆分) + 02 (Python后端) + 40 (YAGNI避免过度拆分) |
-| 想快速回顾融合精髓时 | 45 (融合速查) + 40~49 |
+| 想快速回顾融合精髓时 | 45 (融合速查) + 40~50 |
 | 想要一个能直接抄的完整插件骨架时 | `examples/web_assistant/`（见 `examples/README.md`） |
 | 做记忆/知识/习惯类插件时 | 46 (持久记忆) + 35 (Store/DB) + 10 (性能) + 11 (push_message) |
 | 对接多模型/外部 LLM 想省钱时 | 47 (路由成本) + 42 (网页集成) + 13 (云端集成) + 26 (Backend 设计) |
 | 外发提示词想降费+防泄露时 | 48 (压缩脱敏) + 43 (安全) + 42 (网页集成) |
 | 做陪伴/角色扮演 persona 时 | 49 (状态机) + 35 (Store 持久化) + 30 (Push Message 主动聊天) |
+| 想抄真实市场插件模式/写复杂插件时 | 50 (市场逆向) + 44 (本地架构逆向) + 21 (@llm_tool) + 03 (UI) |
+| 做外部程序桥接（Plugin A ↔ 程序 B）时 | 50 (§3.6 rvc_singer) + 23 (外部协议) + 26 (Backend 设计) |
+| 做游戏控制/状态机插件时 | 50 (§3.5 warthunder) + 49 (状态机) + 19 (LLM 工作流) + 25 (并发) |
+| 做教育/OCR/记忆插件时 | 50 (§3.4 study_companion) + 46 (持久记忆) + 35 (Store/DB) + 10 (性能) |
+| 做邮件/轮询类插件时 | 50 (§3.2 邮件类) + 30 (Push Message) + 02 (@timer_interval) |
 
 ---
 
@@ -218,7 +224,7 @@ my_plugin/
 9. **AI 需要绝对路径** — 拒绝非绝对路径，错误消息中引导搜索
 10. **磁盘 I/O 用 `asyncio.to_thread`** — 不阻塞事件循环
 11. **dependencies 用内联表** — `openai = ">=1.0.0"` 而非列表格式
-12. **`@plugin_entry` 在上** — 双装饰器叠加时顺序不能反
+12. **`@ui.action` 在上、`@plugin_entry` 在下** — 双装饰器叠加时顺序不能反（官方示例）
 13. **`@llm_tool` 用 `*,`** — 强制 keyword-only 避免位置参数错误
 14. **Router 在 `__init__` 中注册** — `include_router` 必须在 `super().__init__` 之后
 15. **第三方库惰性导入 + 错误缓存** — ImportError 后缓存失败结果，不重复重试

@@ -10,7 +10,7 @@ description = "插件功能描述（给用户看）"     # 长描述
 short_description = "简短描述（给 AI 看）"   # 短描述，AI 用来匹配用户意图
 keywords = ["关键词1", "关键词2", ...]      # AI 匹配关键词，中英文都写
 version = "0.1.0"
-entry = "plugins.插件目录名:PluginClassName"  # 必须与目录名完全一致！
+entry = "plugin.plugins.插件目录名:PluginClassName"  # 必须与目录名完全一致！（官方格式带 plugin. 前缀）
 
 [plugin.author]
 name = "作者名"
@@ -68,8 +68,8 @@ permissions = ["state:read"]
 
 ```toml
 # 假设目录名是 my_plugin，类名是 MyPlugin
-entry = "plugins.my_plugin:MyPlugin"   # ✅ 正确
-entry = "plugins.MyPlugin:MyPlugin"    # ❌ 大小写不匹配 → PluginEntryDirectoryMismatch
+entry = "plugin.plugins.my_plugin:MyPlugin"   # ✅ 正确（官方格式）
+entry = "plugin.plugins.MyPlugin:MyPlugin"    # ❌ 大小写不匹配 → PluginEntryDirectoryMismatch
 ```
 
 ### 2. short_description 和 keywords 是 AI 匹配的关键

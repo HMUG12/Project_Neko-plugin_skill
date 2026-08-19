@@ -97,7 +97,7 @@ class MyPlugin(NekoPluginBase):
             "required": ["param1"],
         },
     )
-    async def my_action(self, param1: str = "",, **_):
+    async def my_action(self, param1: str = "", **_):
         """改方法被 AI 调用时执行"""
         if not param1:
             return Err(SdkError("参数不能为空"))
@@ -108,8 +108,12 @@ class MyPlugin(NekoPluginBase):
     # UI Action 方法（上下文用 self.ctx）
     # ══════════════════════════════════════════
 
-    @ui.action(id="my_ui_action")
-    async def my_ui_action(self, param1: str = "",, **_):
+    @ui.action(
+        label=tr("actions.run.label", default="执行"),
+        tone="primary",
+        refresh_context=True,
+    )
+    async def my_ui_action(self, param1: str = "", **_):
         """被 UI 面板的 ActionButton 调用"""
         return Ok({"result": "done"})
 
@@ -117,7 +121,7 @@ class MyPlugin(NekoPluginBase):
     # UI Context 方法
     # ══════════════════════════════════════════
 
-    @ui.context("settings")
+    @ui.context(id="settings")
     async def settings_context(self):
         """返回 settings 面板需要的数据"""
         return {
@@ -287,7 +291,7 @@ self.push_message(
     visibility=["chat"],          # ["chat"] / ["notification"] / 两者
     ai_behavior="blind",          # "blind" = AI 不处理，只展示
     parts=[{"type": "text", "text": f"索引完成喵～共找到 {count} 个文件 ✨"}],
-    priority=3,                   # 1-3=info, 4-6=warning, 7-9=error, 10=紧急
+    priority=5,                   # 0-2=低(信息), 3-5=中(一般), 6-8=高(重要), 9-10=紧急
 )
 ```
 
@@ -467,7 +471,7 @@ def _on_timer(self, **_):
 
 ### @plugin_entry + @ui.action 叠加使用
 
-可以同时挂载两个装饰器到同一方法，让 AI 和 UI 共享同一个实现。装饰器顺序：`@plugin_entry` 在上，`@ui.action` 在下。详见下方"双装饰器模式"章节。
+可以同时挂载两个装饰器到同一方法，让 AI 和 UI 共享同一个实现。装饰器顺序（官方示例）：`@ui.action` 在上，`@plugin_entry` 在下（Python 自下而上执行：`@plugin_entry` 先应用、`@ui.action` 后应用包裹其上）。详见下方"双装饰器模式"章节。
 
 ## 完整模式速查
 
@@ -485,7 +489,7 @@ def _on_timer(self, **_):
 | 进度报告 | 耗时任务进度展示 | `self.report_status({status, progress, message})` |
 | 私有数据目录 | 插件运行时文件存储 | `self.data_path("subdir")` 返回 pathlib.Path |
 | file:/// URL | UI 中访问本地文件 | `f"file:///{path.replace(os.sep, '/')}"` |
-| 双装饰器 | 同一方法 AI+UI 共用 | `@plugin_entry` 在上 + `@ui.action` 在下 |
+| 双装饰器 | 同一方法 AI+UI 共用 | `@ui.action` 在上 + `@plugin_entry` 在下 |
 
 ## 相关文档
 

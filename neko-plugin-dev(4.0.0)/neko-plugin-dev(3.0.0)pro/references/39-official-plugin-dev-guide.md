@@ -26,7 +26,7 @@ N.E.K.O 插件是放在 `plugins/` 目录下的独立文件夹，每个插件至
 id = "greeter"
 name = "Greeter"
 version = "1.0.0"
-entry = "__init__:GreeterPlugin"
+entry = "plugin.plugins.greeter:GreeterPlugin"  # 官方格式：plugin.plugins.目录名:类名
 description = "一个会打招呼的示例插件"
 
 [plugin.sdk]
@@ -65,7 +65,7 @@ class GreeterPlugin:
 | `@plugin_entry(id, name, description, input_schema, params, kind, auto_start, persist, model_validate, timeout, llm_result_fields, llm_result_model, metadata)` | 注册 AI 可调用入口 | 三选一声明参数（见 §5） |
 | `@lifecycle(id="startup"\|"shutdown"\|"reload"\|"freeze"\|"unfreeze"\|"config_change")` | 生命周期钩子 | 仅做真实初始化/清理 |
 | `@timer_interval(id, seconds, name, auto_start)` | 定时器 | 独立线程，需 `new_event_loop()` |
-| `@ui.action(id)` | Hosted UI 行为 | 常与 `@plugin_entry` 叠加 |
+| `@ui.action(label=tr(...), tone="primary", refresh_context=True)` | Hosted UI 行为 | 常与 `@plugin_entry` 叠加，官方示例顺序：`@ui.action` 在上、`@plugin_entry` 在下 |
 | `@ui.context(id)` | Hosted UI 数据 | id 须匹配 `plugin.toml` 的 `[[plugin.ui.panel]].context` |
 | `@llm_tool(name, description, parameters, timeout, role)` | 注册 LLM 自动调用工具 | 见 §6 |
 | `@message` / `@on_event` / `@custom_event` | 消息/事件订阅 | — |
@@ -112,7 +112,7 @@ from plugin.sdk.plugin import neko_plugin, plugin_entry
 - `visibility`: `"user"` | `"group"`
 - `ai_behavior`: `"mention"` | `"ignore"` | `"summary"`
 - `parts`: `[{"type": "text"|"image"|"file"|"card", "text": ...}]`
-- `priority`: `0–100`
+- `priority`: `0–10`（`0-2`=低/信息，`3-5`=中/一般通知，`6-8`=高/重要通知，`9-10`=紧急）
 
 ---
 
@@ -210,7 +210,11 @@ async def on_config_change(self, **_):
 async def settings_context(self, **_) -> dict:
     return {"theme": self.theme}
 
-@ui.action(id="save")
+@ui.action(
+    label=tr("actions.save.label", default="保存"),
+    tone="primary",
+    refresh_context=True,  # 保存后自动刷新面板
+)
 async def save_settings(self, theme: str, **_) -> JsonObject:
     self.theme = theme
     cfg = await self.config.dump()
@@ -288,7 +292,11 @@ class ConfigPanelPlugin:
     async def settings_context(self, **_) -> dict:
         return {"theme": self.theme}
 
-    @ui.action(id="save")
+    @ui.action(
+        label=tr("actions.save.label", default="保存"),
+        tone="primary",
+        refresh_context=True,  # 保存后自动刷新面板
+    )
     async def save_settings(self, theme: str, **_) -> JsonObject:
         self.theme = theme
         cfg = await self.config.dump()

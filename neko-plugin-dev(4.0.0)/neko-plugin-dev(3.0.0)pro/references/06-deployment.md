@@ -84,7 +84,7 @@ $newContent = $content[3..$content.Length]
 **A:** 说明之前同步时带了 BOM。需要同步移除 BOM 后的文件。
 
 ### Q: 目录名大小写不匹配
-**A:** 运行目录名必须与 `plugin.toml` 中 `entry` 的包名完全一致。例如 `entry = "plugins.file_manager:..."` 要求目录名为 `file_manager`（全小写），不能是 `FileManager`。
+**A:** 运行目录名必须与 `plugin.toml` 中 `entry` 的包名完全一致。例如 `entry = "plugin.plugins.file_manager:..."` 要求目录名为 `file_manager`（全小写），不能是 `FileManager`。
 
 ## 部署检查清单
 

@@ -333,23 +333,34 @@ async def dispatch_entry(self, entry_id: str, args: dict):
 ### 7.1 双装饰器
 
 ```python
-@plugin_entry(id="action")
-@ui.action(id="ui_action")
-async def my_action(self,, *, param: str):
+# 官方推荐顺序（hosted-ui 文档示例）：
+@ui.action(
+    label=tr("actions.refresh.label", default="刷新"),
+    tone="primary",
+    refresh_context=True,
+)
+@plugin_entry(
+    id="refresh_item",
+    name="刷新",
+    description="刷新当前项",
+)
+async def refresh_item(self, item_id: str, **_):
     ...
 ```
 
-**规则：`@plugin_entry` 必须在 `@ui.action` 之上！**
+**官方规则（以官方文档为准）：`@ui.action` 在上，`@plugin_entry` 在下！**
 
-原因：Python 装饰器从下往上执行，`@plugin_entry` 在最外层，其返回值会被 `@ui.action` 包装。如果顺序反了，`EVENT_META_ATTR` 会被 `@ui.action` 的返回值覆盖。
+原理：Python 装饰器自下而上执行——`@plugin_entry` 先应用到原始函数（设置 `EVENT_META_ATTR`），`@ui.action` 再包裹其返回值（设置 UI 动作元数据）。官方 SDK 的 `@ui.action` 会保留底层 `EVENT_META_ATTR`，因此 entry 元数据不会丢失。
+
+> 兼容性备注：早期 SDK 版本（旧逆向结论）要求 `@plugin_entry` 在上，否则 `EVENT_META_ATTR` 会被 `@ui.action` 的返回值覆盖。若你的插件在旧 SDK 上运行且 UI action 异常，可尝试交换顺序；新 SDK 一律使用官方顺序（`@ui.action` 在上）。
 
 ### 7.2 装饰器链执行顺序
 
 ```python
-# 实际执行顺序（从下往上）：
-@plugin_entry(id="action")      # 3. 最后执行，设置 EVENT_META_ATTR
-@ui.action(id="ui_action")      # 2. 第二执行，设置 UI_ACTION_ATTR
-async def my_action(...):       # 1. 原始函数
+# 实际执行顺序（自下而上）：
+@ui.action(label=..., tone="primary")   # 2. 后应用，包裹 plugin_entry 的返回值
+@plugin_entry(id="action")               # 1. 先应用，设置 EVENT_META_ATTR
+async def my_action(...):                # 原始函数
     ...
 ```
 

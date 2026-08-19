@@ -121,7 +121,7 @@ self.push_message(
     visibility: list,     # 可见范围：["chat"] 聊天窗口可见
     ai_behavior: str,     # AI 行为："blind" = AI 不处理此消息
     parts: list[dict],    # 消息内容（支持 text、image、audio 等类型）
-    priority: int,        # 优先级：1-3=普通, 4-6=警告, 7-9=错误, 10=紧急
+    priority: int,        # 优先级：0-2=低(信息), 3-5=中(一般通知), 6-8=高(重要), 9-10=紧急
 )
 ```
 
@@ -487,7 +487,7 @@ await asyncio.sleep(breath_ms / 1000)
     },
     llm_result_fields=["success", "song_name", "total_lines", "lines_sung", "merged_audio_url"],
 )
-async def sing(self, song_name="", lyrics="", style="", mimo_voice="",, **__):
+async def sing(self, song_name="", lyrics="", style="", mimo_voice="", **_):
     if self._frozen:
         return Err(SdkError("插件已被冻结"))
 

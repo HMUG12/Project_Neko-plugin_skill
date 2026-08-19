@@ -4,15 +4,22 @@
 
 ---
 
-## neko-plugin-dev(3.0.0)pro (V3.0.0) · 2026-08-02
+## neko-plugin-dev(3.0.0)pro (V3.0.0) · 2026-08-19
 
-> 二次融合：把 13 个外部开源 skill + 本地 `plugins/` 真实代码的方法论沉淀为 10 篇「融合篇」（40–49），并附 1 个端到端可运行示例插件（examples/web_assistant）。主题 38 → 49。
+> 二次融合：把 13 个外部开源 skill + 本地 `plugins/` 真实代码的方法论沉淀为 10 篇「融合篇」（40–49）+ **插件市场 31 个已上架插件源码逆向**（50），并附 1 个端到端可运行示例插件（examples/web_assistant）。主题 38 → 51。
+
+### 新增（市场插件逆向 · 50）⭐ 最新增补
+
+- 📄 [50-market-plugin-reverse-engineering.md](neko-plugin-dev(3.0.0)pro/references/50-market-plugin-reverse-engineering.md) — 从 `https://market.project-neko.cn/api/v1/plugins` 爬取全部 31 个已上架插件的 GitHub 源码（仓库已克隆至 `_crawled_repos/`），逆向提炼**六类成功插件范式**：系统自动化 / 邮件 / 搜索 / 教育 OCR / 游戏控制 / 外部程序桥接
+- 🔄 **SKILL.md 新增 F9 融合核心规则** — "写复杂插件先抄真实市场骨架"（系统自动化用三合一装饰器+窗口锁定+轮询；游戏用独立 data 进程+状态机；外部程序用 HTTP 桥+退避；教育用按功能域拆分 entry）
+- 🔄 **SKILL.md 新增「实战篇·七」** — 参考文档 51 篇、主题 01–50、F1–F9
+- 🔄 **references/README.md / README.md** — 导航表、结构树、版本表新增 50 行 + 实战篇·七 + 交叉引用
 
 ### 新增（统领工作流 · 00 · 最高优先级）⭐ 增补
 
-- 📄 [00-development-coordinator.md](neko-plugin-dev(3.0.0)pro/references/00-development-coordinator.md) — 融合用户「AI 开发协作协调器」skill（v1.0.0, MIT）：五阶段工作流（需求澄清→方案规划→约束生成→任务拆解→编码实现）+ 状态持久化（`.skill对话构建缓存/`）+ 错误回滚 + 7 条元规则；适配本技能——每阶段挂接 01–49、RULES.md 默认注入 20 铁律 + F1–F8。
-- 🔄 **SKILL.md 新增 P0 最高优先级规则** — 用户说"开发插件/启动开发协作"时先跑 00 五阶段工作流，再查 01–49；description / intro / 参考表同步声明 00 为统领层并置顶。
-- 🔄 **主题 49 → 50**（+1 统领篇 00，优先级最高）
+- 📄 [00-development-coordinator.md](neko-plugin-dev(3.0.0)pro/references/00-development-coordinator.md) — 融合用户「AI 开发协作协调器」skill（v1.0.0, MIT）：五阶段工作流（需求澄清→方案规划→约束生成→任务拆解→编码实现）+ 状态持久化（`.skill对话构建缓存/`）+ 错误回滚 + 7 条元规则；适配本技能——每阶段挂接 01–50、RULES.md 默认注入 20 铁律 + F1–F9。
+- 🔄 **SKILL.md 新增 P0 最高优先级规则** — 用户说"开发插件/启动开发协作"时先跑 00 五阶段工作流，再查 01–50；description / intro / 参考表同步声明 00 为统领层并置顶。
+- 🔄 **主题 49 → 51**（+1 统领篇 00 +1 市场逆向 50，优先级 00 最高）
 - 🔄 **references/README.md / README.md** — 导航表、结构树、版本表新增 00 行（最高优先级）
 
 ### 新增（10 篇融合 references · 40–49）
@@ -35,19 +42,21 @@
 - 📁 [examples/web_assistant/](neko-plugin-dev(3.0.0)pro/examples/web_assistant/) — 端到端可抄骨架，整合 40–45 精髓（深函数/Router 拆分/SSRF 守卫/@llm_tool/to_thread/反 AI 味 UI）
 
 ### 重大更新
-- 🔄 **主题 38 → 49**（+11；含 1 篇官方指南 39 + 10 篇融合 40–49）
-- 🔄 **SKILL.md 融合核心规则 F1–F8** — 写任何插件前先默念（YAGNI/深函数/UI 克制/外部调用防 SSRF/抄真实骨架/持久状态放 store/外部 LLM 先路由再缓存再去重/外发提示词先压缩再脱敏）
-- 🔄 **description 扩容** — 加入 13 个外部 skill 与本地逆向说明
-- 🔄 **references/README.md** — 融合表扩到 49 行 + 交叉引用新增 46–49
+- 🔄 **主题 38 → 51**（+13；含 1 篇官方指南 39 + 10 篇融合 40–49 + 1 篇市场逆向 50）
+- 🔄 **SKILL.md 融合核心规则 F1–F9** — 写任何插件前先默念（YAGNI/深函数/UI 克制/外部调用防 SSRF/抄真实骨架/持久状态放 store/外部 LLM 先路由再缓存再去重/外发提示词先压缩再脱敏/**写复杂插件先抄真实市场骨架**）
+- 🔄 **description 扩容** — 加入 13 个外部 skill + 本地逆向 + 市场 31 插件逆向说明
+- 🔄 **references/README.md** — 融合表扩到 51 行 + 交叉引用新增 46–50
 - 🔄 **技能包更名为 `neko-plugin-dev(3.0.0)pro`**（原 `neko-plugin-dev(V2.0)`）
 
 ### 影响统计
-- 主题数：38 → **49**（+11）
+- 主题数：38 → **51**（+13）
 - 铁律：20（不变）
+- 融合核心规则：0 → **F1–F9**
 - 陷阱数：45（不变）
 - 融合外部 skill：0 → **13**
+- 逆向插件源码：0 → **31**（市场已上架插件）
 - 示例插件：0 → **1**
-- references 专题文档：38 → **49**（+1 官方指南 +10 融合）
+- references 专题文档：38 → **51**（+1 官方指南 +10 融合 +1 市场逆向）
 
 ---
 

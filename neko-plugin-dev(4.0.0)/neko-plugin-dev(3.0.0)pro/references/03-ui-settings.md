@@ -354,8 +354,8 @@ const handleDeleteVoice = (voiceId: string) => {
 ## Python 端对应的 UI 方法
 
 ```python
-# settings_context — 提供面板数据
-@ui.context("settings")
+# settings_context — 提供面板数据（id 须与 plugin.toml 的 context 一致）
+@ui.context(id="settings")
 async def settings_context(self):
     return {
         "config": {
@@ -367,8 +367,12 @@ async def settings_context(self):
     }
 
 # update_settings — 响应保存按钮
-@ui.action(id="update_settings")
-async def update_settings(self, config: dict = None,, **_):
+@ui.action(
+    label=tr("actions.update.label", default="保存设置"),
+    tone="primary",
+    refresh_context=True,   # 保存后自动刷新面板
+)
+async def update_settings(self, config: dict = None, **_):
     if not isinstance(config, dict):
         return Err(SdkError("config 必须是对象"))
     self.my_setting = config.get("my_setting", False)

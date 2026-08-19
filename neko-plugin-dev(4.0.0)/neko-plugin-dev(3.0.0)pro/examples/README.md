@@ -1,4 +1,4 @@
-# examples · 可运行示例插件（端到端融合 40–45，可扩展 46–49）
+# examples · 可运行示例插件（端到端融合 40–45，可扩展 46–50）
 
 本目录是一个**完整、可参考**的 N.E.K.O 插件样例，把 `references/40–45` 的融合精髓拼成真实骨架。它不是一个玩具 demo，而是照抄即用的模板。
 
@@ -32,7 +32,7 @@ examples/web_assistant/
 
 1. 把 `web_assistant/` 复制到你的 `plugins/` 目录（或作为新插件起点）。
 2. 按真实框架的 import 约定微调顶部 import（本例沿用 `02-python-plugin.md` 的 `from plugin.sdk.plugin import ...`）。
-3. `plugin.toml` 的 `entry = "plugins.web_assistant:WebAssistantPlugin"` 改成你实际的包路径。
+3. `plugin.toml` 的 `entry = "plugin.plugins.web_assistant:WebAssistantPlugin"` 改成你实际的包路径。
 4. 在设置面板填入 Firecrawl API Key，即可用 `scrape_page` / `web_search` 两个能力。
 
 ## 想扩展时

@@ -17,15 +17,16 @@
 
 本仓库是一个 **TRAE Skill**（技能包），用于在 TRAE 等 AI IDE 中协助开发 N.E.K.O 插件。当你在对话中提到「N.E.K.O 插件」「plugin.toml」「@plugin\_entry」等关键词，AI 会自动加载本技能，按既定规范给你写代码、查 bug、做重构。
 
-**底层是 4 个实战插件 + 主程序逆向**：
+**底层是 4 个实战插件 + 主程序逆向 + 插件市场 31 个已上架插件逆向**：
 
 - `file_manager` — 文件管理插件（基础架构、权限、撤销、日志、数据库）
 - `ai_singer` — 智能演唱插件（云端 API、多面板、富 UI、流式输出、音频管线）
 - `music_pusher` — 音乐推送插件（@llm_tool、PluginRouter、跨插件通信）
 - `qq_auto_reply` — QQ 自动回复插件（外部协议、消息积压、并发竞态）
 - **N.E.K.O-main 主程序深度逆向** — 10 篇基础设施层内部机制（29–38）
+- **插件市场 31 个已上架插件源码逆向** — 六类成功插件范式（50）
 
-所有规则、模板、陷阱都来自这些项目和主程序源码的实战复盘，不是纸上谈兵。
+所有规则、模板、陷阱都来自这些项目、主程序源码与真实市场插件的实战复盘，不是纸上谈兵。
 
 ## 能帮你做什么
 
@@ -45,7 +46,7 @@
 |------|---------|--------|------|--------|---------|
 | V1.00 | file\_manager | 12 | 10 | 17 | 初版：基础架构 + 权限 + 撤销 + 日志 |
 | V1.01 | file\_manager + ai\_singer | 15 | 10 | 21 | +云端 API +多面板 +富 UI 组件 |
-| **neko-plugin-dev(3.0.0)pro**（当前）| + 13 外部开源 skill 融合 + 本地 plugins/ 逆向 + examples 示例插件 + **统领工作流 00**（用户「AI 开发协作协调器」skill 融合，最高优先级） | **50** | **20** | **45** | +39 官方指南 +40–49 融合篇（工程纪律/YAGNI/反 AI 味/网页集成/安全/本地逆向/记忆/LLM路由/压缩脱敏/陪伴状态机）+ 端到端可运行示例插件 |
+| **neko-plugin-dev(3.0.0)pro**（当前）| + 13 外部开源 skill 融合 + 本地 plugins/ 逆向 + **插件市场 31 插件源码逆向** + examples 示例插件 + **统领工作流 00**（用户「AI 开发协作协调器」skill 融合，最高优先级） | **51** | **20** | **45** | +39 官方指南 +40–50 融合/逆向篇（工程纪律/YAGNI/反 AI 味/网页集成/安全/本地逆向/记忆/LLM路由/压缩脱敏/陪伴状态机/**市场 31 插件逆向**）+ 端到端可运行示例插件 |
 | V2.0 | + music\_pusher + qq\_auto\_reply + **N.E.K.O-main 逆向** | 38 | 20 | 45 | +Router +@llm\_tool +Static UI +外部协议 +错误/并发模式 +主程序 10 篇内部机制 |
 
 ## 仓库结构
@@ -59,7 +60,7 @@ Project_Neko-plugin_skill/
 │   └── banner.png                         ← README 顶部 banner
 └── neko-plugin-dev(3.0.0)pro/                 ← neko-plugin-dev(3.0.0)pro 技能包本体
     ├── SKILL.md                           ← 技能入口（TRAE 加载这个文件）
-    └── references/                        ← 50 篇专题参考文档（含 00 统领工作流 + 39 官方指南 + 40–49 融合篇）
+    └── references/                        ← 51 篇专题参考文档（含 00 统领工作流 + 39 官方指南 + 40–50 融合/逆向篇）
         │
         │ ── 统领篇（1 篇 · 最高优先级）── ⭐
         ├── 00-development-coordinator.md   ← 五阶段工作流 + 状态持久化（P0）
@@ -133,7 +134,10 @@ Project_Neko-plugin_skill/
         ├── 46-memory-persistence-subconscious.md   ← 持久记忆
         ├── 47-llm-routing-cost-optimization.md     ← LLM 路由/成本
         ├── 48-prompt-compression-pii-redaction.md  ← 压缩/脱敏
-        └── 49-neko-companion-state-machine.md      ← 陪伴状态机
+        ├── 49-neko-companion-state-machine.md      ← 陪伴状态机
+        │
+        │ ── 实战篇·七（1 篇）── 市场 31 插件逆向 ⭐
+        └── 50-market-plugin-reverse-engineering.md ← 31 已上架插件六类范式
 ```
 
 ***
@@ -289,6 +293,33 @@ plugin.toml  →  __init__.py  →  ui/  →  i18n/  →  docs/  →  测试  �
 | 37 | [ZMQ 传输协议](neko-plugin-dev(3.0.0)pro/references/37-zmq-transport-internals.md)         | 理解跨进程通信          |
 | 38 | [配置系统](neko-plugin-dev(3.0.0)pro/references/38-config-system-internals.md)             | 管理插件配置项         |
 
+### 官方指南篇（1 篇）
+
+| #  | 文档                                                                                  | 何时打开              |
+| -- | ----------------------------------------------------------------------------------- | ----------------- |
+| 39 | [官方插件开发指南](neko-plugin-dev(3.0.0)pro/references/39-official-plugin-dev-guide.md)     | 复习官方推荐写法        |
+
+### 融合外部最佳实践（10 篇）⭐ neko-plugin-dev(3.0.0)pro 新增
+
+| #  | 文档                                                                                  | 何时打开              |
+| -- | ----------------------------------------------------------------------------------- | ----------------- |
+| 40 | [工程纪律 + YAGNI](neko-plugin-dev(3.0.0)pro/references/40-engineering-discipline.md)      | 项目初期定架构/控制范围    |
+| 41 | [反 AI 味 UI](neko-plugin-dev(3.0.0)pro/references/41-ui-design-quality.md)               | 追求高级 UI 质感        |
+| 42 | [网页数据集成](neko-plugin-dev(3.0.0)pro/references/42-web-data-integration.md)            | 爬取/解析网页数据        |
+| 43 | [安全加固](neko-plugin-dev(3.0.0)pro/references/43-security-hardening.md)                | 处理敏感输入/输出        |
+| 44 | [本地插件架构逆向](neko-plugin-dev(3.0.0)pro/references/44-local-plugin-architecture.md)     | 学习本地 plugins/ 写法  |
+| 45 | [融合速查](neko-plugin-dev(3.0.0)pro/references/45-fusion-quick-reference.md)            | 快速回顾融合精髓 F1–F9   |
+| 46 | [持久记忆](neko-plugin-dev(3.0.0)pro/references/46-memory-persistence-subconscious.md)     | 跨会话记忆/学习        |
+| 47 | [LLM 路由与成本](neko-plugin-dev(3.0.0)pro/references/47-llm-routing-cost-optimization.md) | 降 token/路由选择     |
+| 48 | [提示词压缩与脱敏](neko-plugin-dev(3.0.0)pro/references/48-prompt-compression-pii-redaction.md) | 外发 LLM 前压缩/脱敏   |
+| 49 | [角色陪伴型状态机](neko-plugin-dev(3.0.0)pro/references/49-neko-companion-state-machine.md) | 做陪伴/角色扮演 persona |
+
+### 实战篇·七（1 篇 · 插件市场 31 插件逆向）⭐ 新增
+
+| #  | 文档                                                                                  | 何时打开              |
+| -- | ----------------------------------------------------------------------------------- | ----------------- |
+| 50 | [市场插件逆向工程](neko-plugin-dev(3.0.0)pro/references/50-market-plugin-reverse-engineering.md) | 写复杂插件前先抄真实市场骨架 |
+
 ***
 
 ## 典型使用场景
@@ -368,6 +399,33 @@ Get-ChildItem -Path $dst -Recurse -Filter "__pycache__" -Directory | Remove-Item
 ```
 
 详见 [06-deployment.md](neko-plugin-dev(3.0.0)pro/references/06-deployment.md) 和 [17-pyc-cache-trap.md](neko-plugin-dev(3.0.0)pro/references/17-pyc-cache-trap.md)。
+
+***
+
+## neko-plugin-dev(3.0.0)pro 更新日志
+
+> 在 V2.0 基础上的「融合增强版」，主题 38 → 51。
+
+### 主题扩展 38 → 51
+
+- 🆕 统领工作流 00：融合用户「AI 开发协作协调器」skill，五阶段工作流 + 状态持久化（最高优先级）
+- 🆕 融合外部最佳实践 10 篇（40–49）：工程纪律、反 AI 味 UI、网页集成、安全加固、本地逆向、融合速查、持久记忆、LLM 路由、压缩脱敏、陪伴状态机
+- 🆕 实战篇·七 1 篇（50）：**插件市场 31 个已上架插件源码逆向**，六类成功插件范式（系统自动化 / 邮件 / 搜索 / 教育 OCR / 游戏控制 / 外部程序桥接）⭐
+
+### 融合核心规则 20 → 20 + F1–F9
+
+在 20 条铁律之上新增 **9 条融合核心规则（F1–F9）**：
+- F1–F8：多轮对齐、YAGNI、UI 简洁、上下文审计、配置最小化、错误信息友好、推送克制、外发压缩脱敏
+- **F9（新增）**：写复杂插件先抄真实市场骨架（系统自动化用三合一装饰器+窗口锁定+轮询；游戏用独立 data 进程+状态机；外部程序用 HTTP 桥+退避；教育用按功能域拆分 entry）
+
+### 新增 examples/ 可运行示例插件
+
+- 端到端融合 40–45 的示例插件，可扩展 46–50，演示最佳实践落地
+
+### 文档导航 & 结构
+
+- references/README.md 新增交叉引用表 + 50 号导航
+- SKILL.md 参考文档扩展为 51 篇，新增「实战篇·七」
 
 ***
 

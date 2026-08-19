@@ -138,7 +138,7 @@ class WebRouter:
         await self._reload_config()
         return Ok({"status": "refreshed"})
 
-    @ui.context("dashboard")
+    @ui.context(id="dashboard")
     async def dashboard_context(self) -> dict:
         raw = await self.config.dump(timeout=5.0)
         cfg = raw.get("web_assistant", {})
