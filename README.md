@@ -1,5 +1,7 @@
 # N.E.K.O 插件开发 Skill · neko-plugin-dev(4.1.0)
-<img width="1024" height="1024" alt="20260712034620-16e860dc-82a53794" src="https://github.com/user-attachments/assets/ab3687ce-3fc4-4ba8-aff5-9882ef28f129" />
+<img width="1024" height="1024" alt="20260912123440-c080be1e-2be8996c" src="https://github.com/user-attachments/assets/399b3757-1632-4c1c-b20d-1aac1c84430b" />
+
+
 
 > 一套面向 [N.E.K.O](https://github.com) 插件开发的skil辅助，Agent编辅助，从程搭建到避坑上线，全流程覆盖。
 
