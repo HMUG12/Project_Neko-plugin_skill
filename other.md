@@ -21,5 +21,3 @@ uv run neko-plugin check --release /path/to/plugin-repo
 该命令会对插件仓库进行自动检查，提示缺失文件或不符合投稿要求的项，便于在提交前修正。
 
 ---
-
-如果你希望我将这段规范添加到其它位置（例如 README.md、docs/ 或仓库的特定文件中），或者需要我同时为 `plugin.toml` 提供示例模板，我可以继续帮你修改或新增文件。
