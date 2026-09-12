@@ -1,0 +1,21 @@
+# config.example.toml — 用户运行时配置模板（示例）
+#
+# 用法：复制为你的运行配置（用户数据目录中该插件的 config，或按目标 SDK 的
+# 约定放到插件配置目录），再填入真实值。
+#
+#   Windows: %LOCALAPPDATA%\N.E.K.O\plugins\web_assistant\config\plugin.toml
+#
+# ⚠️ 不要把填好真实密钥的副本提交到仓库；源码 manifest（./plugin.toml）
+#    只保留空默认值/占位。
+
+[web_assistant]
+# Firecrawl API Key —— 在插件设置面板填入更推荐，此处仅作模板占位
+firecrawl_api_key = ""
+# 自建/代理地址，留空使用官方端点
+firecrawl_api_url = ""
+# 默认城市（预留给后续能力）
+default_city = ""
+# 搜索默认返回条数
+search_limit = 5
+# 单页请求超时（秒）
+request_timeout = 30

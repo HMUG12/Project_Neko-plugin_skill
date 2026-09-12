@@ -1,6 +1,8 @@
 # 插件间通信
 
-> 基于 N.E.K.O 插件系统设计。覆盖跨插件调用、数据共享、依赖声明、事件总线模式。
+> 基于 N.E.K.O 插件系统设计。覆盖跨插件调用、数据共享、依赖声明、事件订阅模式。
+>
+> **版本**：核对日期 2026-09-12，SDK `>=0.1.0,<0.2.0`。本文正文（`call_entry` / 装饰器订阅 / 无 emit 结论）已对照官方文档；标注 🟡 的代码为**示意**（未在本机逐行运行）。
 
 ---
 
@@ -11,8 +13,10 @@ N.E.K.O 插件间的通信有三种方式：
 | 方式 | 机制 | 适用场景 |
 |------|------|----------|
 | `self.plugins.call_entry()` | 直接调用其他插件的 `@plugin_entry` | 功能委托（如"用 ai_singer 唱歌"） |
-| `self.bus` 事件总线 | 发布/订阅模式 | 广播事件（如"文件已创建"） |
+| `@message` / `@on_event` / `@custom_event` | 消息/事件订阅（仅订阅，**无 publish/emit API**） | 接收系统消息或自定义事件回调 |
 | 共享存储 | 通过数据库或文件 | 持久化数据共享 |
+
+> ⚠️ **关于 `self.bus.emit` / `self.bus.on`**：这两个调用方式在当前 SDK 不存在。Bus 是**只读查询 + watch 订阅**容器（见 [31-bus-system-internals](31-bus-system-internals.md)），没有 publish/emit API；插件间"广播事件"应通过 `@message` / `@on_event` 装饰器声明订阅，由框架派发。
 
 ---
 
@@ -75,47 +79,41 @@ except Exception as e:
 
 ### 3.1 plugin.toml 中的依赖
 
+`plugin.toml` 中被官方文档记录的 `[plugin.dependencies]` 是 **Python 第三方包**声明（内联表格式）：
+
 ```toml
-[plugin]
-name = "my_plugin"
-version = "1.0.0"
-
-# 声明对其他插件的依赖
-[[plugin.dependencies.plugins]]
-name = "ai_singer"
-version = ">=0.6.0"
-required = true   # 必需依赖
-
-[[plugin.dependencies.plugins]]
-name = "music_pusher"
-version = ">=1.0.0"
-required = false  # 可选依赖
+[plugin.dependencies]
+openai = ">=1.0.0"      # ✅ 内联表；不是 openai = [">=1.0.0"]
 ```
 
-### 3.2 运行时检查依赖
+> ⚠️ **没有公开记录的"插件间依赖"声明格式**。不要写 `[[plugin.dependencies.plugins]]` 这类结构——它不在官方文档中，可能被 schema 校验拒绝。插件间依赖请在**运行时**探测并按可用性降级（见下）。
+
+### 3.2 运行时检查依赖（🟡 示意）
+
+插件 B 是否可用，最稳妥的方式是直接 `call_entry` 一个轻量"健康检查"入口并捕获异常：
 
 ```python
+from plugin.sdk.plugin import lifecycle
+
 @lifecycle(id="startup")
 async def on_startup(self, **_):
-    # 检查必需依赖
-    required_plugins = ["ai_singer"]
+    required = ["ai_singer"]          # 必需依赖
     missing = []
-
-    for name in required_plugins:
+    for name in required:
         try:
-            # 尝试获取插件信息
-            info = await self.plugins.get_info(name)
-            self.logger.info(f"依赖插件 {name} v{info.version} 已就绪")
-        except Exception:
+            # 调对方一个约定好的只读入口确认存活/版本
+            await self.plugins.call_entry(f"{name}:check_setup", args={})
+        except Exception as e:
+            self.logger.warning("依赖插件 {} 不可用: {}", name, e)
             missing.append(name)
 
     if missing:
-        self.logger.warning(f"缺少必需插件：{', '.join(missing)}")
         return Err(code="DEPENDENCY_MISSING",
                    message=f"缺少必需插件：{', '.join(missing)}")
-
     return Ok({"status": "ready"})
 ```
+
+> 是否需要"启动即失败"取决于产品策略；很多插件选择**软降级**（缺依赖时相关功能禁用，不影响其余入口）。`self.plugins` 的完整方法集（是否有 `get_info` / 列出已安装插件等）以目标 SDK 文档为准，未验证前不要依赖。
 
 ### 3.3 可选依赖模式
 
@@ -134,48 +132,71 @@ async def _try_use_music_pusher(self, song_data: dict):
 
 ---
 
-## 四、事件总线模式
+## 四、消息/事件订阅（@message / @on_event / @custom_event）
 
-### 4.1 发布事件
+> ⚠️ **本节替换旧的"self.bus.emit/on"示例**：Bus 不提供 publish/emit，跨插件广播事件通过装饰器声明订阅，框架派发。
+
+### 4.1 订阅消息
 
 ```python
-# 文件管理插件：文件创建后发布事件
+# 接收系统消息（其他插件的 push_message 或聊天）
+from plugin.sdk.plugin import message
+
+@message
+async def on_incoming_message(self, msg):
+    """msg 由框架注入，已是结构化对象。"""
+    self.logger.info(f"收到消息: {msg.content}")
+    # ... 处理 ...
+    return Ok({})
+```
+
+### 4.2 订阅生命周期/系统事件
+
+```python
+from plugin.sdk.plugin import on_event, custom_event
+
+@on_event("system:plugin_loaded")
+async def on_plugin_loaded(self, event):
+    self.logger.info(f"插件 {event['plugin']} 加载完成")
+    return Ok({})
+
+# 自定义事件（其他插件可通过 call_entry / 框架派发触发）
+@custom_event("file:created")
+async def on_file_created(self, payload: dict):
+    path = payload.get("path", "")
+    self.logger.info(f"文件已创建: {path}")
+    return Ok({})
+```
+
+### 4.3 跨插件"通知"的正确做法
+
+如果需要把"我刚做完一件事"告诉其他插件，**不要**直接 emit，正确做法是：
+
+```python
 @plugin_entry(id="create_file", ...)
-async def create_file(self, *, path: str, content: str,):
-    # ... 创建文件 ...
+async def create_file(self, *, path: str, content: str):
+    # 1. 真正干活
+    write_file(path, content)
 
-    # 发布事件
-    await self.bus.emit("file:created", {
-        "path": path,
-        "size": len(content),
-        "plugin": self.name,
-    })
-
+    # 2. 通知：调用对方插件的入口点（call_entry 是唯一的"广播"途径）
+    await self.plugins.call_entry(
+        "downstream_plugin:on_file_created",
+        args={"path": path, "size": len(content)},
+    )
     return Ok({"path": path})
 ```
 
-### 4.2 订阅事件
+下游插件侧：
 
 ```python
-@lifecycle(id="startup")
-async def on_startup(self, **_):
-    # 订阅文件创建事件
-    await self.bus.on("file:created", self._on_file_created)
+@plugin_entry(id="on_file_created", name="接收文件创建事件",
+              description="由其他插件通过 call_entry 调用")
+async def on_file_created(self, path: str, size: int = 0, **_):
+    self.logger.info(f"收到文件创建通知: {path} ({size} 字节)")
     return Ok({})
-
-async def _on_file_created(self, event_data: dict):
-    """当任何插件创建文件时触发。"""
-    path = event_data["path"]
-    source_plugin = event_data["plugin"]
-
-    if source_plugin == self.name:
-        return  # 忽略自己发布的事件
-
-    self.logger.info(f"检测到新文件：{path}（来自 {source_plugin}）")
-    # ... 处理 ...
 ```
 
-### 4.3 事件命名规范
+### 4.4 事件命名规范
 
 ```
 {领域}:{动作}
@@ -198,7 +219,9 @@ system:plugin_loaded
 
 ## 五、共享数据模式
 
-### 5.1 通过数据库共享
+> 共享数据属于**强耦合**，优先考虑用 `call_entry` 让对方自己读写自己的数据。确需共享时才用下面的方式。
+
+### 5.1 通过数据库共享（🟡 示意）
 
 ```python
 # 插件 A：写入数据

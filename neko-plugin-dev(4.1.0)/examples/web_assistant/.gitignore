@@ -1,0 +1,12 @@
+# Python 字节码缓存（不要提交，也不要同步到运行目录）
+__pycache__/
+*.pyc
+*.pyo
+
+# 运行时配置（可能含真实密钥）
+config/plugin.toml
+*.local.toml
+
+# 开发用
+tsconfig.json
+node_modules/

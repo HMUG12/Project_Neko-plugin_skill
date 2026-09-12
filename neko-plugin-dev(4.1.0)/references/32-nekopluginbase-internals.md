@@ -229,7 +229,9 @@ def ensure_sdk_context(raw_ctx: PluginContextProtocol) -> SdkContext:
 
 ### 5.2 Bus 包装
 
-SDK 上下文中的 `bus` 属性是包装过的，支持 `BusList` 惰性查询：
+> ⚠️ **v0.9 更新**：Bus 是**只读/订阅门面**（非 pub/sub），查询链已改为 `get(...).filter(field=value).sort(by=...).limit()`；`get_recent()` / `reload()` / `union()/intersect()/difference()` 已移除。下面为历史源码结构，理解原理用，勿照抄旧接口（现行用法见 [31-bus-system-internals.md](31-bus-system-internals.md)）。
+
+SDK 上下文中的 `bus` 属性是包装过的，返回可链式查询的容器：
 
 ```python
 class SdkBusWrapper:

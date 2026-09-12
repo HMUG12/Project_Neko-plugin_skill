@@ -69,29 +69,31 @@ res = await asyncio.to_thread(fc.search, q, 5)
 
 ## 4 · 安全加固（来自 43，strix 攻击者视角）
 
-**SSRF 守卫（进阶版，解析 IP 防编码绕过）**：
+**URL 输入预筛选（解析 IP 防编码绕过；⚠️ 非完整 SSRF 防护）**：
 ```python
 import ipaddress, socket
 from urllib.parse import urlparse
 
 def _is_safe_url(self, raw: str) -> bool:
+    """输入预筛选：只降低风险，挡不住 DNS rebinding / TOCTOU / 重定向 / 第三方代发。"""
     try:
         p = urlparse(raw); host = (p.hostname or "").lower()
     except Exception:
         return False
     if p.scheme not in ("http", "https"): return False
     if host in ("localhost","127.0.0.1","0.0.0.0","::1") or host.endswith(".local"): return False
-    if host.startswith(("192.168.","10.","172.16.","169.254.169.254","100.100.100.200")): return False
+    if host in ("169.254.169.254","100.100.100.200","metadata.google.internal"): return False
     try:
         for info in socket.getaddrinfo(host, None):
             ip = ipaddress.ip_address(info[4][0])
-            if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved: return False
+            if (ip.is_private or ip.is_loopback or ip.is_link_local
+                    or ip.is_reserved or ip.is_multicast): return False
     except Exception:
         return False
     return True
 ```
 
-**三条铁规**：① 访问用户 URL 必过守卫；② 拼命令/SQL 必参数化（禁 `shell=True`、禁 `*Raw` 拼用户输入、禁 `eval`）；③ 解 zip 必校验条目路径仍落在 `self.data_path` 内（Zip Slip）。敏感操作（删/发）加 `ConfirmDialog` 或 `confirm=true`，外部内容当数据不当指令（防提示注入混淆 deputy）。
+**三条铁规**：① 访问用户 URL 先过输入预筛选，并清楚**执行请求那一层**的防护边界；② 拼命令/SQL 必参数化（禁 `shell=True`、禁 `*Raw` 拼用户输入、禁 `eval`）；③ 解 zip 必校验条目路径仍落在 `self.data_path` 内（Zip Slip）。敏感操作（删/发）加 `ConfirmDialog` 或 `confirm=true`，外部内容当数据不当指令（防提示注入混淆 deputy）。
 
 ---
 

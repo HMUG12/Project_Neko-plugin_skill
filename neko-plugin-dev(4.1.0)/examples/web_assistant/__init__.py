@@ -6,7 +6,7 @@
   · Router 子包拆分：中等插件推荐范式（44 §1 范式 A）
   · 设置面板：self.config.dump()/update()（03 / 44 §3）
   · @llm_tool 联网能力：firecrawl 官方 SDK（42 §4.5）
-  · SSRF 守卫：凡访问用户给的 URL 先过 _is_safe_url（43 §4）
+  · URL 输入预筛选：凡访问用户给的 URL 先过 _is_safe_url（43 §4；注意这不是完整 SSRF 防护）
   · 防御性入口：try/except → Err，异常不冒泡（44 §6）
 
 import 形式以你框架版本为准，本文件沿用 02-python-plugin.md 的约定。

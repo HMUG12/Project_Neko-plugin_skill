@@ -163,7 +163,7 @@ async def on_start(self, **_):
 - 与其他插件建立协作关系
 
 ### 注意事项
-- **启动超时 10 秒**：耗时操作丢 `asyncio.create_task()`
+- **启动就绪默认约 10 秒（可配）**：`[plugin_runtime].timeout` 须 `0 < timeout <= 300`；耗时操作丢 `asyncio.create_task()`
 - **启动失败不会阻止其他插件**：单个插件启动失败不影响系统
 - **定时器在 on_start 之后才开始触发**
 

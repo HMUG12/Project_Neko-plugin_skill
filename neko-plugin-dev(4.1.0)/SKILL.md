@@ -1,17 +1,20 @@
 ---
 name: "neko-plugin-dev"
-description: "N.E.K.O 插件开发完整指南。涵盖 plugin.toml 配置、Python 后端（装饰器/生命周期/数据库/report_status/data_path/双装饰器/@llm_tool/PluginRouter）、UI 设置面板（Select/StatusBadge/ActionForm/api.call）、AI 友好设计、权限体系、性能优化、单元测试、部署同步和 45 个已知陷阱。新增 NEKO 主程序深度逆向分析十篇（生命周期/ZMQ/Push Message/Bus/NekoPluginBase/PluginRouter/Logger/Store-DB/i18n/Config 内部机制）。进一步融合 13 个外部开源 skill（mattpocock/ponytail/impeccable/hallmark/firecrawl/strix/agentskills + token-saviour/subconscious-skill/prompthakcer/NadirClaw/llm-router/neko-skill）的方法论，并直接逆向工作区 plugins/ 真实插件源码提取架构范式（44-local-plugin-architecture）与融合速查（45-fusion-quick-reference / 46–49 二次融合 / 50 市场插件逆向）。**最高优先级统领层 `00-development-coordinator`**：用户说"开发插件"/"启动开发协作"时，先跑五阶段工作流（需求澄清→方案规划→约束生成→任务拆解→编码实现），每阶段需确认、状态持久化到 `.skill对话构建缓存/`。所有结论已对照官方开发者文档 project-neko.online 与 GitHub 仓库 plugins/ 真实代码核实。当用户需要开发、修改、调试 N.E.K.O 插件或创建新插件时调用此技能。"
+description: "N.E.K.O 插件开发完整指南。涵盖 plugin.toml 配置、Python 后端（装饰器/生命周期/数据库/report_status/data_path/双装饰器/@llm_tool/PluginRouter）、UI 设置面板（Select/StatusBadge/ActionForm/api.call）、AI 友好设计、权限体系、性能优化、单元测试、部署同步和 45 个已知陷阱。新增 NEKO 主程序深度逆向分析十篇（生命周期/ZMQ/Push Message/Bus/NekoPluginBase/PluginRouter/Logger/Store-DB/i18n/Config 内部机制）。进一步融合 13 个外部开源 skill（mattpocock/ponytail/impeccable/hallmark/firecrawl/strix/agentskills + token-saviour/subconscious-skill/prompthakcer/NadirClaw/llm-router/neko-skill）的方法论，并直接逆向工作区 plugins/ 真实插件源码提取架构范式（44-local-plugin-architecture）与融合速查（45-fusion-quick-reference / 46–49 二次融合 / 50 市场插件逆向）。可选工作流 `00-development-coordinator`（**非强制前置**）：仅当用户**明确**要求协作/结对编程，或插件规模大、需求含糊时，才进入五阶段工作流（需求澄清→方案规划→约束生成→任务拆解→编码实现），状态只保留最少必要并遵守脱敏/忽略/删除规则；简单/明确任务直接按 01–50 动手。所有结论已对照官方开发者文档 project-neko.online 与 GitHub 仓库 plugins/ 真实代码核实。当用户需要开发、修改、调试 N.E.K.O 插件或创建新插件时调用此技能。"
 ---
 
 # N.E.K.O 插件开发 Skill
 
-> 基于 `file_manager` + `ai_singer` + `music_pusher` + `qq_auto_reply` 多插件实战 + N.E.K.O-main 主程序深度逆向分析 + 插件市场 31 个已上架插件源码逆向，从零到一，涵盖 51 个主题（含 1 篇统领工作流 00 + 50 个技术主题 01–50；00 为用户「AI 开发协作协调器」skill 融合的元流程，优先级最高），并附 1 个端到端可运行示例插件（examples/）。所有结论已对照官方开发者文档（project-neko.online）与 GitHub 仓库 `plugins/` 真实代码核实。
+> 基于 `file_manager` + `ai_singer` + `music_pusher` + `qq_auto_reply` 多插件实战 + N.E.K.O-main 主程序深度逆向分析 + 插件市场 31 个已上架插件源码逆向，从零到一，涵盖 51 个主题（含 1 篇可选工作流 00 + 50 个技术主题 01–50），并附 1 个示例插件（examples/，**尚未在干净环境跑通端到端验证**）。结论已对照官方开发者文档（project-neko.online）与 GitHub 仓库 `plugins/` 真实代码逐条核对。
+
+> **已验证目标版本**：SDK `recommended = ">=0.1.0,<0.2.0"` / `supported = ">=0.1.0,<0.3.0"`；官方文档核对日期 **2026-09-12**。超出该区间请先重跑 `uv run neko-plugin check <id> --strict` 与示例验证。文中未标注「已验证」的代码片段均为**示意**。
 
 ---
 
-## P0 · 统领工作流（最高优先级 · 来自 00）
+## 可选工作流（来自 00 · 非强制前置，按需启用）
 
-> ⚠️ **本技能的最高优先级规则**：当用户说"开发插件""启动开发协作""用结对编程模式""加载…（项目）"时，**先进入 [`00-development-coordinator.md`](references/00-development-coordinator.md) 的五阶段工作流**（需求澄清→方案规划→约束生成→任务拆解→编码实现），每阶段等用户确认，状态落盘 `.skill对话构建缓存/`。**不要跳过访谈/规划直接写代码。** 具体技术实现再查 01–50。
+> 当用户**明确**说"启动开发协作""用结对编程模式"，或插件规模大、需求含糊时，进入 [`00-development-coordinator.md`](references/00-development-coordinator.md) 的五阶段工作流（需求澄清→方案规划→约束生成→任务拆解→编码实现）。
+> **简单/明确的插件任务不要强制走五阶段访谈**——直接按 01–50 给方案并动手即可。若启用，状态文件只保留最少必要内容，并遵守 00 中的脱敏、`.gitignore` 与删除规则。
 
 ---
 
@@ -37,18 +40,18 @@ my_plugin/
 
 ## 20 条铁律
 
-1. **文件名全小写 + 下划线** — 目录名与 `entry` 的包名严格一致
+1. **文件名全小写 + 下划线** — 目录名 / `plugin.id` / `entry` 包名**建议**三者一致；官方加载器可能容忍不一致，但**打包与生产安装要求对齐**，不一致会报错
 2. **Python 文件无 BOM** — `UTF-8 without BOM`，否则 `SyntaxError`
 3. **上下文用 `self.ctx`** — 框架**不会**给 `@plugin_entry`/`@ui.action`/`@lifecycle` 传入任何 `ctx` 参数（真实插件代码 0 处使用 `_ctx=None`）；需要运行时上下文用 `self.ctx` 属性，不要给方法加 `_ctx=None` 参数
 4. **`**_` 可选 catch-all** — `@lifecycle`/`@plugin_entry`/`@ui.action` 想兼容框架未来可能传入的额外关键字可加 `**_`，官方示例普遍使用但**非强制**；Best Practice 建议「仅在有意消费额外参数时」才加
-5. **启动 < 10 秒** — 耗时操作丢 `asyncio.create_task()`
+5. **启动就绪默认约 10 秒（可配）** — `[plugin_runtime].timeout` 须满足 `0 < timeout <= 300`；耗时操作丢 `asyncio.create_task()`，并注意关闭时取消与异常收集
 6. **无 `executemany`** — 逐行 `await session.execute()`
-7. **手动同步 + 删 `__pycache__`** — 工作区改完必须同步到部署目录，**并删除目标目录的 `__pycache__/`**，否则旧代码继续运行且无报错！
+7. **优先官方开发模式 Reload** — 源码树（`plugin/plugins/`）或开发者模式 Load unpacked 下，改完点 **Reload** 即可生效，日常不必反复复制；仅在手改源码/已安装包或行为不更新时，才删目标目录 `__pycache__/` 作为**诊断分支**（见 06 / 17）
 8. **权限默认 `false`** — 安全优先，总开关 + 逐操作授权
 9. **AI 需要绝对路径** — 拒绝非绝对路径，错误消息中引导搜索
 10. **磁盘 I/O 用 `asyncio.to_thread`** — 不阻塞事件循环
 11. **`plugin.toml` dependencies 用内联表** — `openai = ">=1.0.0"` 而非 `python = ["openai>=1.0.0"]`
-12. **双装饰器：`@ui.action` 在上，`@plugin_entry` 在下**（官方示例顺序）— 叠加时 `@ui.action(label=..., tone=..., refresh_context=True)` 在外、`@plugin_entry` 在内；Python 自下而上执行，最终属性以官方示例为准（详见 33 号文档 §7.1 与 39 号文档 §8）
+12. **双装饰器：`@ui.action` 在上，`@plugin_entry` 在下**（官方示例顺序，**本机未运行验证**）— 叠加时 `@ui.action(label=..., tone=..., refresh_context=True)` 在外、`@plugin_entry` 在内；最终以你目标 SDK 的官方示例为准（详见 33 号文档 §7.1 与 39 号文档 §8）
 13. **`@llm_tool` 用 `*,` 强制 keyword-only** — `async def my_tool(self, *, param: str)`，万一传进位置参数会立刻报错
 14. **Router 在 `__init__` 中注册** — `self.include_router()` 必须在 `super().__init__(ctx)` 之后、`__init__` 返回之前调用
 15. **第三方库惰性导入 + 错误缓存** — `try/except ImportError` 失败后缓存错误，后续调用重放错误而不重试 import
@@ -56,7 +59,7 @@ my_plugin/
 17. **on_init 不调其他插件** — `on_init` 时其他插件可能尚未加载，跨插件调用应在 `on_start` 中进行
 18. **push_message 大文件用 URL** — 大文件 base64 编码后体积膨胀 33%，用 `file://` URL 代替 `data:` 传递
 19. **Router entry 设 prefix** — 多个 Router 必须有不同 prefix 避免 entry ID 冲突
-20. **Bus 查询用惰性链式** — `get_recent().filter().limit()` 而非多次 `reload()`，减少 ZMQ 往返
+20. **Bus 查询用官方可重放链** — `get(...).filter(field=value).sort(by=...).limit()`；旧 `get_recent()` / `reload()` / `union()/intersect()/difference()` / `bus.emit()` 已移除，Bus 不是发布订阅总线
 
 ---
 
@@ -79,11 +82,11 @@ my_plugin/
 ## 快速排查
 
 ```
-1.☐BOM? 2.☐目录名一致? 3.☐self.ctx取上下文(无_ctx参数)? 4.☐executemany?
-5.☐keywords? 6.☐database.enabled? 7.☐同步+删__pycache__了? 8.☐重启了? 9.☐rstrip(os.sep)?
+1.☐BOM? 2.☐目录名/ID/entry包名对齐? 3.☐self.ctx取上下文(无_ctx参数)? 4.☐executemany?
+5.☐keywords? 6.☐database.enabled? 7.☐改完先Reload(而非复制+重启)? 8.☐行为不更新才删__pycache__? 9.☐rstrip(os.sep)?
 10.☐dependencies格式? 11.☐双装饰器顺序? 12.☐@llm_tool用*或**_? 13.☐Router在__init__中注册?
 14.☐第三方导入有错误缓存? 15.☐跨插件用call_entry而非import?
-16.☐on_startup不调其他插件? 17.☐大文件用URL而非base64? 18.☐Router有prefix? 19.☐Bus用惰性链式?
+16.☐on_startup不调其他插件? 17.☐大文件用URL而非base64? 18.☐Router有prefix? 19.☐Bus用get().filter().sort().limit()?
 ```
 
 ---
@@ -92,13 +95,14 @@ my_plugin/
 
 ```toml
 [plugin]
-id = "your_plugin_id"                    # 必须与目录名一致
+id = "your_plugin_id"                    # 建议与源码目录名一致（打包/生产安装要求对齐）
 name = "插件中文名"
 description = "插件功能描述"
 short_description = "简短描述（给 AI 看）"
 keywords = ["关键词1", "关键词2", ...]      # 中英文都写，覆盖用户所有说法
 version = "0.1.0"
-entry = "plugin.plugins.插件目录名:PluginClassName"  # 必须与目录名完全一致！（官方格式带 plugin. 前缀）
+type = "plugin"                          # 普通插件；可省略（默认值）
+entry = "plugin.plugins.目录名:PluginClassName"  # module.path:ClassName，且必须是 NekoPluginBase 子类
 
 [plugin.author]
 name = "作者名"
@@ -110,6 +114,7 @@ supported = ">=0.1.0,<0.3.0"
 [plugin_runtime]
 enabled = true
 auto_start = true
+timeout = 10                             # 启动就绪秒数，须 0 < timeout <= 300
 
 [plugin.store]
 enabled = true
@@ -144,7 +149,7 @@ my_text = ""
 my_list = []
 ```
 
-**注意**：`entry` 路径中的包名必须与目录名完全一致（大小写敏感），否则报 `PluginEntryDirectoryMismatch`。
+**注意**：`[plugin].entry` 必须是 `module.path:ClassName` 且解析为 `NekoPluginBase` 子类（`PluginRouter` 不能直接作为入口）。`plugin.id`、源码目录名、`entry` 包名**强烈建议一致**：开发期旧的源码发现机制可能容忍不一致，但**打包与生产安装要求对齐**，不一致会加载/打包失败。
 
 ---
 
@@ -677,9 +682,22 @@ class FakeDB:
 
 ---
 
-## 部署同步
+## 运行与部署（默认官方开发模式）
 
-工作区改完必须手动同步到 `C:\Users\...\AppData\Local\N.E.K.O\plugins\` 并重启 N.E.K.O。
+按场景选择，**不要把源码手工复制进用户插件目录**：
+
+| 场景 | 代码从哪加载 | 改完怎么生效 |
+|------|-------------|-------------|
+| 源码树开发（推荐） | `N.E.K.O/plugin/plugins/<id>/` | `uv run neko-plugin check <id> --strict` → 详情页 **Reload**；改依赖后重启该插件 |
+| 开发者模式 Load unpacked | 就地注册的源码绝对路径目录 | 编辑后 **Reload**；改依赖后重启 |
+| 已安装包 | 安装目录代码只读，运行时状态在用户数据目录 | 重新 `build` 并导入 `.neko-plugin`；仅手工覆盖时删目标 `__pycache__/` |
+
+```bash
+uv run neko-plugin check my_plugin --strict     # 静态检查（通过 ≠ 运行通过）
+uv run neko-plugin build my_plugin --out my_plugin.neko-plugin   # 交付时打包
+```
+
+> 用户运行时配置在用户数据目录（Windows `%LOCALAPPDATA%\N.E.K.O\plugins\<id>\config\plugin.toml`），密钥写这里，不要进源码 manifest。
 
 ### BOM 移除
 ```powershell
@@ -694,25 +712,25 @@ $c = [System.IO.File]::ReadAllBytes('__init__.py')
 | # | 陷阱 | 现象 | 修复 |
 |---|------|------|------|
 | 1 | BOM | `SyntaxError` | 移除 BOM 字节 |
-| 2 | 目录名大小写 | `PluginEntryDirectoryMismatch` | 目录名 = entry 包名 |
+| 2 | 目录名/ID/entry 不一致 | 加载或打包失败（旧发现机制可能容忍） | 三者对齐 = 源码目录名 |
 | 3 | keywords 参数 | `unexpected keyword argument` | 移除 `keywords=` |
 | 4 | executemany | `no attribute` | 逐行 `execute()` |
-| 5 | 启动超时 | `timed out after 10s` | `asyncio.create_task()` |
+| 5 | 启动就绪超时 | 收到 startup timeout 报错 | 调 `[plugin_runtime].timeout`（≤300）；耗时放 `asyncio.create_task()` |
 | 6 | database 未启用 | `self.db` 为 None | `enabled = true` |
 | 7 | fetchall 加 await | 运行时错误 | 同步 `fetchall()` |
 | 8 | 根目录路径 Bug | 路径不匹配 | `rstrip(os.sep)` |
-| 9 | 旧文件覆盖 | 行为不变 | 同步到部署目录 |
+| 9 | 旧文件未生效 | 行为不变 | 源码树/开发者模式用 **Reload**；手工同步场景确认已覆盖 |
 | 10 | AI 乱拼路径 | 路径错误 | 拒绝非绝对路径 + 引导 |
-| 11 | `__pycache__` 缓存 | 改代码不生效 | 删除 `__pycache__/` |
+| 11 | `__pycache__` 缓存 | 改代码不生效（Reload 后仍不变） | 删目标 `__pycache__/`（诊断分支） |
 | 12 | dependencies 格式 | schema 警告 | 内联表格式 |
-| 13 | 双装饰器顺序 | 行为异常/UI 不生效 | 官方示例：`@ui.action` 在上、`@plugin_entry` 在下 |
+| 13 | 双装饰器顺序 | 行为异常/UI 不生效 | 以官方示例为准：`@ui.action` 在上、`@plugin_entry` 在下（未本机验证） |
 | 14 | LLM 跳过前置检查 | 直接调核心入口 | description 强提示 |
 | 15 | 惰性导入无缓存 | 反复 import 失败 | 错误缓存 + 重放 |
 | 16 | on_init 调其他插件 | 返回 PluginNotFound | 移到 on_start |
 | 17 | 大文件 base64 超时 | ZMQ 消息超限 | 用 file:// URL |
 | 18 | Router 无 prefix | Entry ID 冲突 | router.set_prefix() |
-| 19 | Bus 多次 reload | 响应慢/ZMQ 往返多 | 惰性链式 filter().limit() |
-| 20 | BusList 忘 await | 迭代返回空 | await reload() 或设置 _ctx |
+| 19 | Bus 用旧 API | `get_recent/reload` 报错或空 | 改 `get(...).filter(...).sort(...).limit()` |
+| 20 | BusList watch 条件错 | 迭代返回空/不触发 | 结构化 `filter(field=value)`；仅 messages/events/lifecycle 支持 `watch(ctx)` |
 
 ---
 
@@ -776,7 +794,7 @@ async def get_weather(self, *, city: str):   # 框架以 kwargs 传参，推荐 
 | `self.store` | 键值持久化（`get`/`set`/`delete`） |
 | `self.db` | SQLite（`[plugin.database] enabled=true` 时可用） |
 | `self.logger` | 日志（支持 `loguru` braces 与 stdlib `%`） |
-| `self.bus` | 事件总线（`events`/`memory` 惰性查询、`.watch()`） |
+| `self.bus` | **只读/订阅门面（不是 pub/sub 事件总线）**：`messages`/`events`/`lifecycle`/`conversations`/`memory` 五条总线；前三条可 `get().filter().sort().limit()` 并 `watch(ctx)`，`conversations`/`memory` 为只读快照 |
 | `self.plugins` | 跨插件调用（`call_entry("other:entry", {...})`） |
 | `self.plugin_id` / `self.plugin_dir` / `self.config_dir`(兼容别名) / `self.storage_dir` / `self.runtime_config_path` / `self.metadata` / `self.system_info` | 元信息与路径（官方 10 属性） |
 | `report_status(dict)` / `push_message(...)` / `data_path(...)` / `cache_path(*parts)` | 状态/消息/私有目录/缓存目录 |
@@ -788,11 +806,30 @@ async def get_weather(self, *, city: str):   # 框架以 kwargs 传参，推荐 
 - 生命周期只做真正的初始化/清理；耗时操作丢 `asyncio.create_task`
 - 入口参数：推断 schema / 显式 `input_schema` / Pydantic `params` **三选一**
 - 处理器签名显式声明用到的字段；`**_` 仅在「有意」消费额外参数时使用
-- 普通日志走 `logger`；隐私敏感原始内容**绝不**进日志
+- 普通日志走 `logger`；敏感原文默认不进日志（脱敏正则**非完备**，勿据此断言"已安全"）
 - 用定时器时务必用锁保护共享状态
 - `plugin.toml` 的 `[plugin].entry` 路径与 SDK 版本约束必须正确
 
-### 6. 官方 5 个完整示例
+### 6. Bus 查询 API（v0.9 现行）
+
+Bus 是**宿主状态的只读/订阅门面，不是发布订阅总线**（`self.bus.emit()` 之类不存在，输出请用 `push_message` / `report_status` / Bus 之外的通道）。
+
+```python
+# 可重放链：get() → 结构化 filter(field=value) → sort(by=, reverse=) → limit()
+events = await self.bus.events.get(plugin_id=self.plugin_id, max_count=50)
+recent = events.filter(priority_min=1).filter(type="TASK_FINISHED").sort(by="timestamp", reverse=True).limit(20)
+
+# messages 同理：
+msgs = await self.bus.messages.get(room_id=room_id, max_count=100)
+hot  = msgs.filter(role="user").sort(by="timestamp", reverse=True).limit(10)
+```
+
+- 结构化 `filter(field=value)` 可被计划树重放下推；`filter(callable)` 只作用于本地快照，**不能**放在 `watch()` 之前。
+- `watch()` 订阅仅 `messages`/`events`/`lifecycle` 支持；`conversations`/`memory` 是只读快照。
+- **已移除**：`get_recent()`、`reload()`、`union()/intersect()/difference()`、where_* 辅助、增量 reload 游标、`self.memory`。旧的 `self.memory` 请改用 `await self.bus.memory.get(bucket_id="default", limit=20)`（有界、短 TTL，**不保证**持久事实/人格记忆）。
+- 上例为依据官方示例复现的**示意**，未在本机 SDK 逐行运行；升级 SDK 后请以官方示例为准重测。
+
+### 7. 官方 5 个完整示例
 
 官方 Examples 页提供可直接运行的 5 个插件：`hello_world`（最小）、`kv_store`（store）、`config_panel`（UI+配置）、`scheduler`（timer）、`todo`（完整 CRUD）。要点已并入本 Skill 各主题，完整代码见 [39-official-plugin-dev-guide](references/39-official-plugin-dev-guide.md)。
 
@@ -800,13 +837,13 @@ async def get_weather(self, *, city: str):   # 框架以 kwargs 传参，推荐 
 
 ## 参考文档
 
-本 Skill 目录下 `references/` 包含 51 篇详细参考文档（含 1 篇统领工作流 00 + 50 个技术主题 01–50），覆盖每个主题的完整实现和代码示例：
+本 Skill 目录下 `references/` 包含 51 篇详细参考文档（含 1 篇可选工作流 00 + 50 个技术主题 01–50），覆盖每个主题的完整实现和代码示例：
 
-### 统领篇（最高优先级 · 来自用户「AI 开发协作协调器」skill）
+### 可选篇（大型新插件按需启用 · 来自用户「AI 开发协作协调器」skill）
 
-- [00-development-coordinator](references/00-development-coordinator.md) — **统领工作流（P0）**：五阶段（需求澄清→方案规划→约束生成→任务拆解→编码实现）+ 状态持久化（`.skill对话构建缓存/`）+ 错误回滚 + 7 条元规则；用户说"开发插件/启动开发协作"时**最先跑**。已适配本技能：每阶段挂接 01–50 具体主题、RULES.md 默认注入 20 铁律 + F1–F9
+- [00-development-coordinator](references/00-development-coordinator.md) — **可选工作流**：五阶段（需求澄清→方案规划→约束生成→任务拆解→编码实现）+ 最小状态持久化 + 错误回滚；适合需求复杂的大型新插件。每阶段挂接 01–50 具体主题、RULES.md 默认注入 20 铁律 + F1–F9
 
-### 基础篇（必读）
+### 基础篇（01–04 必读）
 - [01-plugin-toml](references/01-plugin-toml.md) — plugin.toml 完整参考
 - [02-python-plugin](references/02-python-plugin.md) — Python 后端核心指南
 - [03-ui-settings](references/03-ui-settings.md) — UI 设置面板开发
@@ -840,12 +877,12 @@ async def get_weather(self, *, city: str):   # 框架以 kwargs 传参，推荐 
 - [25-concurrency-race-conditions](references/25-concurrency-race-conditions.md) — 并发与竞态条件（锁外 I/O、冻结取消、防重入刷新、消息积压上限、请求去重、WebSocket 指数退避重连、回复概率控制）
 - [26-backend-design-pattern](references/26-backend-design-pattern.md) — Backend 对象设计模式（惰性导入+错误缓存、配置传播与_log注入、健康检查多时机、同步/异步桥接、多后端共存、完整模板）
 - [27-audio-processing-pipeline](references/27-audio-processing-pipeline.md) — 音频处理管线（纯 Python WAV 合并无 ffmpeg 依赖、Viseme 口型同步数据生成、时长估算三级回退、双轨播放架构、句间换气停顿算法）
-- [28-inter-plugin-communication](references/28-inter-plugin-communication.md) — 插件间通信（call_entry 跨插件调用、依赖声明与检查、事件总线 pub/sub、共享数据模式、版本兼容回退、防御性调用）
+- [28-inter-plugin-communication](references/28-inter-plugin-communication.md) — 插件间通信（call_entry 跨插件调用、依赖声明与检查、共享数据模式、版本兼容回退、防御性调用；官方无跨插件 pub/sub，Bus 只是本机只读门面）
 
 ### 实战篇·五（基于 N.E.K.O 主程序深度逆向分析 — 框架层）
 - [29-plugin-lifecycle-internals](references/29-plugin-lifecycle-internals.md) — 插件生命周期内部机制（7 阶段状态机、ZMQ 进程通信架构、load/init/start/run/stop/unload 全流程、子进程管理、常见生命周期陷阱）
 - [30-push-message-internals](references/30-push-message-internals.md) — Push Message 深度解析（visibility/ai_behavior 两轴正交模型、Parts 结构详解、coalesce_key 消息合并、旧版→v2 迁移映射、UI Action 媒体播放、内部 base64 编码机制）
-- [31-bus-system-internals](references/31-bus-system-internals.md) — Bus 总线系统深度解析（惰性查询容器 BusList、计划节点树 GetNode/FilterNode/SortNode、五条总线 messages/events/lifecycle/conversations/memory、Revision 追踪、Watch 变更订阅、集合操作 union/intersect/difference）
+- [31-bus-system-internals](references/31-bus-system-internals.md) — Bus 只读门面深度解析（可重放查询链 `get().filter().sort().limit()`、计划节点树、五条总线 messages/events/lifecycle/conversations/memory、Watch 变更订阅；**已移除 get_recent/reload/union/intersect/difference**）
 - [32-nekopluginbase-internals](references/32-nekopluginbase-internals.md) — NekoPluginBase 内部机制（双层继承 shared/sdk、构造函数全流程、Entry 收集、Router 绑定、SDK 上下文封装、LLM Tool 注册流程、Static UI、PluginStore/PluginDatabase/PluginStatePersistence）
 - [33-pluginrouter-entry-internals](references/33-pluginrouter-entry-internals.md) — PluginRouter 与 Entry 系统（懒解析策略、动态 Entry 注册、before/after/around_entry 钩子、hook 系统、quick_action 快捷操作、Entry 分发全流程、装饰器叠加规则、闭包陷阱）
 
@@ -870,12 +907,12 @@ async def get_weather(self, *, city: str):   # 框架以 kwargs 传参，推荐 
 - [40-engineering-discipline](references/40-engineering-discipline.md) — 工程纪律：小步提交、TDD、深模块、两轴代码审查、诊断循环 + ponytail 的 YAGNI 阶梯反过度工程
 - [41-ui-design-quality](references/41-ui-design-quality.md) — 反"AI 味"的 Hosted UI 设计：impeccable + hallmark 的确定性设计规则映射到 `@neko/plugin-ui` 受限组件与内联样式
 - [42-web-data-integration](references/42-web-data-integration.md) — 网页数据集成：以 firecrawl 为例，把联网抓取/搜索封装成 `@llm_tool` / `@plugin_entry` 的深模块模式
-- [43-security-hardening](references/43-security-hardening.md) — 插件安全加固：以 strix 攻击者视角覆盖最小权限、密钥、SSRF、注入、路径穿越、XSS、提示注入、错误处理
+- [43-security-hardening](references/43-security-hardening.md) — 插件安全加固：以 strix 攻击者视角覆盖最小权限、密钥来源分层、URL 输入预筛选（**非完整 SSRF 防护**）、注入、路径穿越、XSS、提示注入、错误处理
 - [44-本地插件架构逆向](references/44-local-plugin-architecture.md) — 直接逆向 `plugins/` 真实插件：三种拆分范式、生命周期/配置/工具注册真实写法、防御性模式（带 file:line 出处）
-- [45-融合速查](references/45-fusion-quick-reference.md) — 40–44 的压缩版：精髓五条 + 决策树 + 可抄片段（YAGNI/反 slop/firecrawl/SSRF 守卫/真实骨架）
+- [45-融合速查](references/45-fusion-quick-reference.md) — 40–44 的压缩版：精髓五条 + 决策树 + 可抄片段（YAGNI/反 slop/firecrawl/SSRF 输入预筛选/真实骨架）
 - [46-持久记忆与潜意识整理](references/46-memory-persistence-subconscious.md) — 5 阶段记忆管道、3 类记忆、重要性衰减/归档、whisper 极简注入；映射到 store + `@timer_interval` 后台整理（subconscious-skill）
 - [47-LLM 路由与成本优化](references/47-llm-routing-cost-optimization.md) — 复杂度分类→三档、验证器门控级联、Jaccard 语义缓存、飞行中去重、健康感知后端（NadirClaw + llm-router）
-- [48-提示词压缩与 PII 脱敏](references/48-prompt-compression-pii-redaction.md) — 4 层 token 成本模型（输入是大头）、正则压缩 15–70%、本地信用卡/邮箱/SSN/API Key 红挡（token-saviour + prompthakcer）
+- [48-提示词压缩与 PII 脱敏](references/48-prompt-compression-pii-redaction.md) — 4 层 token 成本模型（输入是大头）、正则压缩 15–70%、本地正则遮挡信用卡/邮箱/SSN/API Key（覆盖面有限，非完备脱敏）（token-saviour + prompthakcer）
 - [49-角色陪伴型状态机](references/49-neko-companion-state-machine.md) — 数值化好感度状态机、聊天指令系统、动作/情绪标签输出、主动聊天（neko-skill，**已剔除越狱内容**）
 
 ### 实战篇·七（基于插件市场 31 个已上架插件源码逆向）⭐ 新增

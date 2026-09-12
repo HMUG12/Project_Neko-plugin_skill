@@ -94,7 +94,7 @@ from plugin.sdk.plugin import neko_plugin, plugin_entry
 | `self.store` | 键值持久化（`get` / `set` / `delete`） |
 | `self.db` | SQLite（`[plugin.database] enabled=true` 时可用） |
 | `self.logger` | 日志（支持 `loguru` 花括号与 stdlib `%`） |
-| `self.bus` | 事件总线（`events` / `memory` 惰性查询，支持 `.watch()`） |
+| `self.bus` | **只读/订阅门面（非 pub/sub）**：`messages`/`events`/`lifecycle` 可 `get().filter().sort().limit()` 并 `.watch()`；`conversations`/`memory` 只读快照 |
 | `self.plugins` | 跨插件调用（`call_entry("other_plugin:entry", {...})`） |
 | `self.plugin_id` / `self.config_dir` / `self.metadata` / `self.system_info` | 元信息 |
 | `report_status(dict)` | 上报状态 |

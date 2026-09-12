@@ -1,39 +1,39 @@
 # N.E.K.O 插件开发 Skill 指南
 
-> 基于 `file_manager` + `ai_singer` + `music_pusher` + `qq_auto_reply` 多插件实战 + N.E.K.O-main 主程序深度逆向分析 + 插件市场 31 个已上架插件源码逆向，从零到一，从入门到避坑，涵盖 51 个主题（含 1 篇统领工作流 00 + 11 篇融合：8 篇外部开源 skill 最佳实践（40–43 + 46–49）+ 1 篇本地插件架构逆向（44）+ 1 篇融合速查（45）+ 1 篇市场插件逆向工程（50）），并附 1 个端到端可运行示例插件（examples/）。
+> 基于 `file_manager` + `ai_singer` + `music_pusher` + `qq_auto_reply` 多插件实战 + N.E.K.O-main 主程序深度逆向分析 + 插件市场 31 个已上架插件源码逆向，从零到一，从入门到避坑，涵盖 51 个主题（含 1 篇可选工作流 00 + 11 篇融合：8 篇外部开源 skill 最佳实践（40–43 + 46–49）+ 1 篇本地插件架构逆向（44）+ 1 篇融合速查（45）+ 1 篇市场插件逆向工程（50）），并附 1 个示例插件（examples/，**尚未在干净环境跑通端到端验证**）。
+>
+> **已验证目标版本**：SDK `>=0.1.0,<0.2.0`；官方文档核对日期 2026-09-12。超出该区间请先重跑 `uv run neko-plugin check <id> --strict` 与示例验证；文中未标注「已验证」的代码片段均为**示意**。
 
 ---
 
 ## 从零搭建（5 分钟快速入门）
 
 ```bash
-# 1. 创建目录
-mkdir my_plugin && cd my_plugin
+# 1. 初始化（官方脚手架）
+uv run neko-plugin init my_plugin --type plugin --name "My Plugin"
 
-# 2. 创建 plugin.toml（复制 01 模板，改 id/name/entry）
-# 3. 创建 __init__.py（复制 02 模板，改类名）
-# 4. 创建 ui/settings.tsx（复制 03 模板）
-# 5. 创建 i18n/zh-CN.json + i18n/en.json（复制 04 格式）
-# 6. 语法验证
+# 2. 按 01/02/03/04 模板补齐 plugin.toml / __init__.py / ui/settings.tsx / i18n
+
+# 3. 语法验证
 python -c "import py_compile; py_compile.compile('__init__.py', doraise=True)"
 
-# 7. 同步到部署目录
-Copy-Item '.\*' 'C:\Users\Admin\AppData\Local\N.E.K.O\plugins\my_plugin\' -Recurse -Force
+# 4. 静态检查（通过 ≠ 运行通过）
+uv run neko-plugin check my_plugin --strict
 
-# 8. 重启 N.E.K.O
+# 5. 以官方开发模式加载并 Reload（源码树 plugin/plugins/ 或开发者模式 Load unpacked）
 ```
 
-**最简骨架**：只需要 `plugin.toml` + `__init__.py`（含 `on_startup`）就能跑起来。
+**最简骨架**：只需要 `plugin.toml` + `__init__.py`（含 `startup` 生命周期）就能跑起来。日常改动用详情页 **Reload** 生效；**不要**把手写源码复制进用户插件目录（详见 [06-deployment.md](06-deployment.md)）。
 
 ---
 
 ## 文档导航
 
-### 统领篇（最高优先级 · 来自用户「AI 开发协作协调器」skill）
+### 可选篇（来自用户「AI 开发协作协调器」skill）
 
 | 编号 | 文档 | 内容 | 何时需要 |
 |------|------|------|---------|
-| 00 | [开发协作协调器](00-development-coordinator.md) | 五阶段工作流 + 状态持久化（`.skill对话构建缓存/`）+ 错误回滚 + 7 条元规则；已适配本技能（每阶段挂接 01–50、RULES.md 注入 20 铁律 + F1–F9） | **用户说"开发插件/启动开发协作"时最先跑** |
+| 00 | [开发协作协调器](00-development-coordinator.md) | 五阶段工作流 + 最小状态持久化（`.skill对话构建缓存/`，含脱敏/忽略/删除规则）+ 错误回滚 + 7 条元规则；已适配本技能（每阶段挂接 01–50、RULES.md 注入 20 铁律 + F1–F9） | 用户**明确**说"启动开发协作/结对编程模式"，或插件规模大、需求含糊时 |
 
 ### 基础篇（必读）
 
@@ -87,7 +87,7 @@ Copy-Item '.\*' 'C:\Users\Admin\AppData\Local\N.E.K.O\plugins\my_plugin\' -Recur
 | 25 | [并发与竞态条件](25-concurrency-race-conditions.md) | 锁外I/O、冻结取消、防重入刷新、积压上限、请求去重、WebSocket指数退避、概率控制 | 多入口/定时器/外部协议 |
 | 26 | [Backend设计模式](26-backend-design-pattern.md) | 惰性导入+错误缓存、配置传播、健康检查多时机、同步异步桥接、多后端共存 | 对接外部API/服务 |
 | 27 | [音频处理管线](27-audio-processing-pipeline.md) | 纯Python WAV合并、Viseme口型同步、时长估算三级回退、双轨播放、换气停顿 | 处理音频/多媒体 |
-| 28 | [插件间通信](28-inter-plugin-communication.md) | call_entry调用、依赖声明检查、事件总线、共享数据、版本兼容回退 | 多插件协作联动 |
+| 28 | [插件间通信](28-inter-plugin-communication.md) | call_entry 调用、运行时依赖检查、装饰器事件订阅、共享数据、版本兼容回退（**Bus 无 emit，非 pub/sub**） | 多插件协作联动 |
 
 ### 实战篇·五（基于 N.E.K.O 主程序深度逆向分析 — 框架层）
 
@@ -95,7 +95,7 @@ Copy-Item '.\*' 'C:\Users\Admin\AppData\Local\N.E.K.O\plugins\my_plugin\' -Recur
 |------|------|------|---------|
 | 29 | [生命周期内部机制](29-plugin-lifecycle-internals.md) | 7阶段状态机、ZMQ进程通信、load/init/start/run/stop/unload、子进程管理 | 排查启动/停止 bug |
 | 30 | [Push Message 深度解析](30-push-message-internals.md) | visibility/ai_behavior两轴模型、Parts结构、coalesce_key、媒体播放、base64编码 | 推送任何消息 |
-| 31 | [Bus 总线系统](31-bus-system-internals.md) | BusList惰性查询、计划节点树、五条总线、Revision追踪、Watch订阅、集合操作 | 查询消息/事件/记忆 |
+| 31 | [Bus 门面系统](31-bus-system-internals.md) | 可重放查询链 `get().filter().sort().limit()`、计划节点树、五条总线、Revision 追踪、Watch 订阅（**已移除 get_recent/reload/union**） | 查询消息/事件/记忆 |
 | 32 | [NekoPluginBase 内部](32-nekopluginbase-internals.md) | 双层继承、Entry收集、Router绑定、SDK上下文封装、LLM Tool注册、Store/DB/State | 深入理解插件基类 |
 | 33 | [PluginRouter Entry 系统](33-pluginrouter-entry-internals.md) | 懒解析策略、动态Entry、before/after钩子、hook系统、quick_action、分发全流程 | 设计多模块插件 |
 
@@ -114,8 +114,8 @@ Copy-Item '.\*' 'C:\Users\Admin\AppData\Local\N.E.K.O\plugins\my_plugin\' -Recur
 | 编号 | 文档 | 内容 | 何时需要 |
 |------|------|------|---------|
 | 05 | [单元测试](05-testing.md) | Mock SDK、Fake 对象、测试模板 | 开发完成时 |
-| 06 | [部署同步](06-deployment.md) | 工作区 vs 运行目录、同步命令 | 每次修改后 |
-| 07 | [踩坑大全](07-gotchas.md) | 40 个已知陷阱、排查清单 | 遇到 bug 时 |
+| 06 | [运行与部署](06-deployment.md) | 源码开发 / Load unpacked / 已安装包三场景、缓存与 BOM | 改完不生效 / 交付时 |
+| 07 | [踩坑大全](07-gotchas.md) | 45 个已知陷阱、排查清单 | 遇到 bug 时 |
 | 12 | [汇总清单](12-master-checklist.md) | 所有文档的检查清单合并 | 代码审查/上线前 |
 
 ### 融合外部开源最佳实践 + 本地逆向（工程与质量）⭐ 新增
@@ -125,20 +125,22 @@ Copy-Item '.\*' 'C:\Users\Admin\AppData\Local\N.E.K.O\plugins\my_plugin\' -Recur
 | 40 | [工程纪律](40-engineering-discipline.md) | 小步提交/TDD/深模块/两轴审查/诊断循环 + YAGNI 阶梯反过度工程（mattpocock + ponytail） | 任何开发阶段、重构、代码审查 |
 | 41 | [UI 反 AI 味](41-ui-design-quality.md) | 反 slop 设计规则映射到 Hosted UI 受限组件与内联样式（impeccable + hallmark） | 写设置面板 / UI 时 |
 | 42 | [网页数据集成](42-web-data-integration.md) | firecrawl 官方 SDK 抓取/搜索/抽取封装为 `@llm_tool` / `@plugin_entry` 的深模块（firecrawl） | 需要联网抓取/搜索能力 |
-| 43 | [安全加固](43-security-hardening.md) | 最小权限/密钥/进阶 SSRF/注入/Zip Slip/XSS/提示注入，攻击者视角（strix） | 涉及外部调用、文件、敏感操作 |
+| 43 | [安全加固](43-security-hardening.md) | 最小权限、密钥来源分层、URL 输入预筛选（**非完整 SSRF 防护**）、注入/Zip Slip/XSS/提示注入，攻击者视角（strix） | 涉及外部调用、文件、敏感操作 |
 | 44 | [本地插件架构逆向](44-local-plugin-architecture.md) | 直接逆向 `plugins/` 真实插件：三种拆分范式、生命周期/配置/工具注册真实写法、防御性模式（带 file:line 出处） | 设计大型插件、想抄真实骨架时 |
-| 45 | [融合速查](45-fusion-quick-reference.md) | 40–44 的压缩版：精髓五条 + 决策树 + 可抄片段（YAGNI/反 slop/firecrawl/SSRF 守卫/真实骨架） | 写任何插件前先翻这篇 |
+| 45 | [融合速查](45-fusion-quick-reference.md) | 40–44 的压缩版：精髓五条 + 决策树 + 可抄片段（YAGNI/反 slop/firecrawl/URL 输入预筛选/真实骨架） | 写任何插件前先翻这篇 |
 | 46 | [持久记忆与潜意识](46-memory-persistence-subconscious.md) | 5 阶段记忆管道、3 类记忆、衰减/归档、whisper；store + `@timer_interval` 后台整理（subconscious-skill） | 做记忆/知识/习惯类插件、后台"梦境"整理时 |
 | 47 | [LLM 路由与成本优化](47-llm-routing-cost-optimization.md) | 复杂度分类→三档、验证器门控级联、Jaccard 语义缓存、飞行中去重（NadirClaw + llm-router） | 对接多模型/外部 LLM、想省钱省 token 时 |
-| 48 | [提示词压缩与 PII 脱敏](48-prompt-compression-pii-redaction.md) | 4 层 token 成本模型、正则压缩 15–70%、本地信用卡/邮箱/SSN/API Key 红挡（token-saviour + prompthakcer） | 外发 LLM/API 前想降费+防泄露时 |
+| 48 | [提示词压缩与 PII 脱敏](48-prompt-compression-pii-redaction.md) | 4 层 token 成本模型、正则压缩 15–70%、本地正则遮挡信用卡/邮箱/SSN/API Key（覆盖面有限，非完备）（token-saviour + prompthakcer） | 外发 LLM/API 前想降费+降泄露风险时 |
 | 49 | [角色陪伴型状态机](49-neko-companion-state-machine.md) | 好感度状态机、聊天指令、动作/情绪标签、主动聊天（neko-skill，已剔除越狱） | 做陪伴/角色扮演 persona 插件时 |
 | 50 | [市场插件逆向工程](50-market-plugin-reverse-engineering.md) | 插件市场 31 个已上架插件源码全景：六类插件最佳实践（系统自动化/邮件/搜索/教育OCR/游戏/外部程序桥接）+ 三合一装饰器 + 后台轮询 + 可抄片段 + 踩坑表 | **想抄真实成功插件的模式/写复杂插件前** |
 
 ---
 
-### 可运行示例插件（examples/）
+### 示例插件（examples/）
 
-`examples/web_assistant/` 是一个完整、可参考的插件，把 `40–45` 的精髓拼成真实骨架：`plugin.toml` + 主类（生命周期 / `include_router`）+ `routers/web.py`（深函数 + SSRF 守卫 + `@llm_tool`）+ `ui/settings.tsx`（反 AI 味面板）。详见 [`examples/README.md`](examples/README.md)。
+`examples/web_assistant/` 是一个结构完整、可参考的插件，把 `40–45` 的精髓拼成骨架：`plugin.toml` + 主类（生命周期 / `include_router`）+ `routers/web.py`（深函数 + URL 输入预筛选 + `@llm_tool`）+ `ui/settings.tsx`（反 AI 味面板）+ `config.example.toml`（运行时配置模板）。
+
+> ⚠️ **尚未在干净环境跑通端到端验证**；上手前先 `uv run neko-plugin check web_assistant --strict` 并在目标 SDK 上实际加载验证。详见 [`examples/README.md`](examples/README.md)。
 
 ## 交叉引用速查
 
@@ -150,7 +152,7 @@ Copy-Item '.\*' 'C:\Users\Admin\AppData\Local\N.E.K.O\plugins\my_plugin\' -Recur
 | 做数据库操作时 | 02 (数据库模式) + 10 (批量/索引) + 07 (#4 #7 陷阱) |
 | 写定时器时 | 02 (定时器签名) + 10 (性能 #8) + 09 (冻结保护) + 24 (错误处理 §2.6) |
 | 做启动初始化时 | 02 (启动分离) + 10 (启动优化) + 07 (#5 超时) |
-| 部署时 | 06 (同步指南) + 07 (#1 BOM, #2 目录名, #22 pyc) |
+| 部署/加载时 | 06 (运行与部署) + 07 (#1 BOM, #2 目录名, #22 pyc) |
 | 写测试时 | 05 (Mock 模板) + 02 (返回值模式) |
 | 对接云 API 时 | 13 (云端集成) + 14 (多面板) + 08 (AI 友好错误消息) + 26 (Backend 设计) |
 | 做多面板/标签页时 | 14 (架构设计) + 15 (UI 模式) + 03 (组件清单) |
@@ -213,18 +215,18 @@ my_plugin/
 
 ## 20 条铁律
 
-1. **文件名全小写 + 下划线** — 目录名与 `entry` 的包名严格一致
-2. **Python 文件无 BOM** — `UTF-8 without BOM`
+1. **文件名全小写 + 下划线** — 目录名 / `plugin.id` / `entry` 包名**建议**三者一致；打包与生产安装要求对齐，不一致会报错
+2. **Python 文件无 BOM** — `UTF-8 without BOM`，否则 `SyntaxError`
 3. **上下文用 `self.ctx`** — 框架不传 `ctx` 参数；需要上下文用 `self.ctx`，不要加 `_ctx=None`
-4. **`**_` 可选** — `@lifecycle`/`@plugin_entry`/`@ui.action` 可加 `**_` 前向兼容，非强制
-5. **启动 < 10 秒** — 耗时操作丢 `asyncio.create_task()`
+4. **`**_` 可选 catch-all** — `@lifecycle`/`@plugin_entry`/`@ui.action` 可加 `**_` 前向兼容，非强制
+5. **启动就绪默认约 10 秒（可配）** — `[plugin_runtime].timeout` 须满足 `0 < timeout <= 300`；耗时操作丢 `asyncio.create_task()`
 6. **无 `executemany`** — 逐行 `await session.execute()`
-7. **手动同步 + 删 `__pycache__`** — 同步后必须删除部署目录的 `__pycache__/`
+7. **优先官方开发模式 Reload** — 源码树/开发者模式下改完点 **Reload**；仅在手改源码/已安装包或行为不更新时，才删目标 `__pycache__/` 作为诊断分支
 8. **权限默认 `false`** — 安全优先，总开关 + 逐操作授权
 9. **AI 需要绝对路径** — 拒绝非绝对路径，错误消息中引导搜索
 10. **磁盘 I/O 用 `asyncio.to_thread`** — 不阻塞事件循环
 11. **dependencies 用内联表** — `openai = ">=1.0.0"` 而非列表格式
-12. **`@ui.action` 在上、`@plugin_entry` 在下** — 双装饰器叠加时顺序不能反（官方示例）
+12. **`@ui.action` 在上、`@plugin_entry` 在下**（官方示例，**本机未运行验证**）— 最终以目标 SDK 官方示例为准
 13. **`@llm_tool` 用 `*,`** — 强制 keyword-only 避免位置参数错误
 14. **Router 在 `__init__` 中注册** — `include_router` 必须在 `super().__init__` 之后
 15. **第三方库惰性导入 + 错误缓存** — ImportError 后缓存失败结果，不重复重试
@@ -232,7 +234,7 @@ my_plugin/
 17. **on_init 不调其他插件** — 跨插件调用放在 on_start 中
 18. **push_message 大文件用 URL** — 大文件 base64 体积膨胀 33%
 19. **Router entry 设 prefix** — 多 Router 用 prefix 避免 ID 冲突
-20. **Bus 查询用惰性链式** — filter().limit() 而非多次 reload()
+20. **Bus 查询用官方可重放链** — `get(...).filter(field=value).sort(by=...).limit()`；旧 `get_recent()`/`reload()`/`union()`/`emit()` 已移除
 
 ## 开发顺序
 
@@ -243,9 +245,9 @@ plugin.toml  →  __init__.py  →  ui/  →  i18n/  →  docs/  →  测试  �
 ## 快速排查
 
 ```
-1.☐BOM? 2.☐目录名一致? 3.☐self.ctx取上下文(无_ctx参数)? 4.☐**_(可选)? 5.☐executemany?
-6.☐keywords? 7.☐database.enabled? 8.☐同步+删__pycache__了? 9.☐重启了? 10.☐rstrip(os.sep)?
+1.☐BOM? 2.☐目录名/ID/entry包名对齐? 3.☐self.ctx取上下文(无_ctx参数)? 4.☐**_(可选)? 5.☐executemany?
+6.☐keywords? 7.☐database.enabled? 8.☐改完先Reload(而非复制+重启)? 9.☐行为不更新才删__pycache__? 10.☐rstrip(os.sep)?
 11.☐dependencies格式? 12.☐双装饰器顺序? 13.☐@llm_tool签名有*? 14.☐Router在__init__中注册?
 15.☐第三方导入有错误缓存? 16.☐跨插件用call_entry而非import?
-17.☐on_init不调其他插件? 18.☐大文件用URL而非base64? 19.☐Router有prefix? 20.☐Bus用惰性链式?
+17.☐on_init不调其他插件? 18.☐大文件用URL而非base64? 19.☐Router有prefix? 20.☐Bus用get().filter().sort().limit()?
 ```

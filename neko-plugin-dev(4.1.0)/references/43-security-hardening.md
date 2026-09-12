@@ -13,11 +13,21 @@
 
 ---
 
-## 2 · 密钥与凭据（绝不硬编码）
+## 2 · 密钥与凭据（不硬编码，且分清两个"plugin.toml"）
 
-- API Key / Token 一律走 `plugin.toml` 的 `[settings]` 或环境变量，**代码里只读取**（`42-web-data-integration.md` 第 6 节）。
-- 不要提交含真实 Key 的配置到仓库；提供空默认值。
-- **日志里不打印密钥**：`self.logger.error("call failed: %s", e)` 不要把整个 config dump 出去（`11-undo-and-logging.md`）。
+先把两个易混的配置文件分开（见 `38-config-system-internals.md`）：
+
+| 文件 | 位置 | 提交仓库？ | 放什么 |
+|------|------|:---:|------|
+| **源码 manifest** `plugin.toml` | 插件源码目录 | ✅ 会提交 | 结构、空默认值、`config.example.toml` 里的**占位** |
+| **用户运行时配置** | 用户数据目录 `...\<id>\config\plugin.toml`（由设置面板写） | ❌ 不提交 | 用户填的**真实 Key** |
+
+要点：
+
+- 源码里**只写空默认值/占位**（如 `api_key = ""`），真实 Key 由用户在其运行环境填写，代码只读取。
+- 不要把真实 Key 写进源码 manifest 并提交；也不要只在源码 manifest 写死导致用户无法覆盖。
+- 也可支持环境变量作为备选来源。
+- **日志里不打印密钥**：`self.logger.error("call failed: %s", e)` 不要把整个 config dump 出去（`11-undo-and-logging.md`）；框架的日志脱敏是**尽力而为**，不能当作"密钥已安全"的保证。
 
 ---
 
@@ -31,7 +41,7 @@
 
 ---
 
-## 4 · SSRF（服务端请求伪造）
+## 4 · URL 输入预筛选（SSRF 缓解的一步，非完整防护）
 
 当插件会"访问用户给的 URL"（如 `42-web-data-integration.md` 的抓取、`23-external-protocol-integration.md` 的 Webhook）时，strix 实测会这样打：
 
@@ -41,12 +51,19 @@
 - **地址编码绕过**：十进制 `http://2130706433/`（=127.0.0.1）、八进制、IPv6 简写、`@` 混淆 `http://evil@127.0.0.1`、末尾加点 `127.0.0.1.`。
 - **盲打 OAST**：请求一个攻击者控制的域名，靠 DNS/HTTP 外带确认"能出网"。
 
-**防御**（在基础校验上加硬）：
+**先明确这段代码能做什么、不能做什么**：
+
+- 它是一个**输入预筛选器**：在把 URL 交给"真正执行请求的那一方"之前，拒绝明显危险的形态。
+- 它**不能**阻止：DNS rebinding / TOCTOU（校验与请求之间解析结果被改变）、重定向到内网、以及"请求由第三方云服务（如 firecrawl）代发、根本不从本机出网"这类情况。
+- 因此**不要**把它命名为 `ssrf_guard` 之类并据此认为"已防住 SSRF"。真正的防护取决于**执行请求的那一层**是否做了网络隔离与出网策略。
+
 ```python
 import ipaddress
+import socket
 from urllib.parse import urlparse
 
 def _is_safe_url(self, raw: str) -> bool:
+    """输入预筛选：只挡明显危险形态，不是完整 SSRF 防护。"""
     try:
         p = urlparse(raw)
     except Exception:
@@ -57,24 +74,26 @@ def _is_safe_url(self, raw: str) -> bool:
     # 1) 拒绝保留/内网主机名
     if host in ("localhost", "127.0.0.1", "0.0.0.0", "::1") or host.endswith(".local"):
         return False
-    if host.startswith(("192.168.", "10.", "172.16.", "172.17.", "172.18.",
-                        "172.19.", "172.2", "172.30.", "172.31.")):
-        return False
     if host in ("169.254.169.254", "100.100.100.200", "metadata.google.internal"):
         return False
     # 2) 解析 IP 再判（防 2130706433 / IPv6 简写 / @混淆）
+    #    ⚠️ 注意：这里解析出的 IP 与真正请求时解析的 IP 可能不同（DNS rebinding）
     try:
-        import socket
         for info in socket.getaddrinfo(host, None):
             ip = ipaddress.ip_address(info[4][0])
-            if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved:
+            if (ip.is_private or ip.is_loopback or ip.is_link_local
+                    or ip.is_reserved or ip.is_multicast):
                 return False
     except Exception:
         return False
     return True
 ```
 
-拒绝后返回 `Err("不安全的 URL，已拒绝。")`，**绝不**发起请求。对"会访问用户 URL"的入口，strix 视角下这条是头号高危项。
+补强建议（按投入排序）：
+
+1. 尽量**不要**从本机直接请求用户给的 URL；交给有出网策略的隔离层/第三方服务。
+2. 若必须本机请求：限制重定向次数、禁止跳转到内网、并把"校验用的 IP"和"连接的 IP"绑定（避免 TOCTOU）。
+3. 拒绝后返回 `Err("不安全的 URL，已拒绝。")`，不要继续发请求。
 
 ---
 
@@ -146,9 +165,9 @@ strix 把 LLM 插件的提示注入拆成：
 ## 10 · 交付前安全自检清单
 
 - [ ] `plugin.toml` 权限为最小集，无多余授权？
-- [ ] 无硬编码密钥；密钥走配置且未提交仓库？
+- [ ] 无硬编码密钥；真实密钥在用户运行时配置、源码只有占位且未提交？
 - [ ] 所有入口参数做了类型/范围/枚举校验？
-- [ ] 访问外部 URL 前做了 SSRF 校验？
+- [ ] 访问外部 URL 前做了输入预筛选，并清楚执行请求那一层的防护边界（预筛选 ≠ 完整 SSRF 防护）？
 - [ ] 无 `eval/exec`、无 `shell=True` 字符串拼接、无 SQL 拼接？
 - [ ] 文件操作限制在 `self.data_path` 内，无 `../` 穿越？
 - [ ] UI 不把外部内容当 HTML 渲染？

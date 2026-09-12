@@ -1,426 +1,272 @@
-# 31 — Bus 总线系统深度解析
+# 31 — Bus 门面深度解析
 
-> **来源**：N.E.K.O-main `plugin/core/bus/` 全部源码深度逆向分析  
-> **适用**：理解插件间事件/消息/生命周期的底层通信机制，排查通信相关 bug
+> **来源**：官方文档（[SDK 迁移清单](https://project-neko.online/plugins/migration-v0.9)）+ N.E.K.O-main `plugin/core/bus/` 历史源码逆向。
+> **适用**：理解宿主状态（消息/事件/生命周期/对话/记忆）的读取与订阅机制，排查通信相关 bug。
+>
+> ⚠️ **一句话定性**：Bus 是**宿主状态的只读/订阅门面（facade），不是发布订阅总线**。没有 `bus.emit()` / `bus.publish()` / `ctx.trigger_event()`。插件对外产出请用 `push_message` / `report_status` / UI Action / 跨插件 `call_entry`。
+>
+> **版本**：核对日期 2026-09-12，SDK `>=0.1.0,<0.2.0`。标 ✅ 的写法来自官方文档示例；标 🟡 的片段为**示意**（依据官方 API 复现，未在本机逐行运行）；标 ❌ 的为**已移除接口**，仅供阅读历史代码。
+
+### v0.9 迁移速查表
+
+| 旧 API（❌ 已移除） | 现行 API（✅ 官方文档） |
+|-------------------|----------------------|
+| `bus.messages.get_recent(50)` | `await bus.messages.get(max_count=50)` |
+| `bus.messages.query(filters=..., sort_by=..., limit=...)` | `get(...)` → 链式 `.filter(field=value)` → `.sort(by=..., reverse=...)` → `.limit(n)` |
+| `busList.reload(ctx)` | 移除了增量游标；查询尽量**一次**规划完成，链式操作在单次请求内下推 |
+| `busList.union(o)` / `intersect` / `difference` | 集合操作已移除，改写为结构化 `filter` |
+| `where_eq/where_in/...` 辅助 | 一律用 `filter(field=value)` |
+| `ctx.trigger_event(...)` / `bus.emit(...)` | **不存在**：事件通过 `@on_event` / `@message` / `@custom_event` 装饰器接收 |
+| `self.memory`（读写记忆） | 改用只读 `await self.bus.memory.get(bucket_id="default", limit=20)`（有界、短 TTL） |
 
 ---
 
-## 1. Bus 系统架构总览
+## 1. Bus 门面架构总览
 
-N.E.K.O 的总线系统不是传统的 pub/sub（基于 topic），而是一个**反应式查询系统**，支持惰性求值、计划重放和增量变更订阅。
+官方对 Bus 的定义是"**宿主状态的只读/订阅门面**"，而不是基于 topic 的 pub/sub。它支持惰性求值与变更订阅。
 
 ### 五条总线
 
 ```
-BusHub (总线中枢)
-├── messages/      ← 消息总线：聊天消息、插件推送
-├── events/        ← 事件总线：系统事件、自定义事件
-├── lifecycle/     ← 生命周期总线：插件状态变更
-├── conversations/ ← 对话总线：对话上下文管理
-└── memory/        ← 记忆总线：五维记忆系统查询
+BusHub (门面中枢)
+├── messages/      ← 消息：聊天消息、插件推送   （可 get 查询 + watch 订阅）
+├── events/        ← 事件：系统/自定义事件        （可 get 查询 + watch 订阅）
+├── lifecycle/     ← 生命周期：插件状态变更        （可 get 查询 + watch 订阅）
+├── conversations/ ← 对话上下文                   （只读快照）
+└── memory/        ← 记忆                         （只读、有界、短 TTL 快照）
 ```
 
-### 架构模式
+### 数据流（子进程 → 宿主）
 
-```
-[Plugin Process]                    [Server Process]
-     │                                   │
-     │  ctx.bus.messages.get(...)        │
-     │  (returns BusList)                │
-     │                                   │
-     │  ZeroMQ RPC ──────────────────►   │
-     │  op="bus.get_recent"              │
-     │                                   │
-     │  ◄──────────────────  records     │
-     │                                   │
-     │  BusList wraps records            │
-     │  with _plan (GetNode tree)        │
-     │                                   │
-     │  .filter(...).sort(...).limit()   │
-     │  链式操作只修改 _plan，不重查      │
-     │                                   │
-     │  .reload(ctx) → 重放 _plan        │
-     │  .watch(ctx)  → 订阅变更          │
+```text
+[Plugin Process]                         [Host/Server Process]
+     │                                        │
+     │  await ctx.bus.messages.get(...)       │
+     │  ZeroMQ RPC ─────────────────────────► │
+     │  ◄──────────────────────────── records │
+     │                                        │
+     │  返回 BusList                           │
+     │  .filter(field=value)   → 结构化下推    │
+     │  .sort(by=..., reverse=) → 计划节点     │
+     │  .limit(n)              → 截断          │
+     │  .watch(ctx)            → 订阅后继变更  │
 ```
 
 ---
 
-## 2. BusList — 惰性查询容器
+## 2. 查询链（✅ 官方文档示例）
 
-`BusList` 是总线的核心抽象，它有两种模式：
-
-### 2.1 急切模式 (Eager)
-```python
-# 直接传入记录列表，没有 _ctx 或 _plan
-records = [MessageRecord(...), MessageRecord(...)]
-bus_list = BusList(records)
-# 此时 BusList 行为类似普通 list
-for r in bus_list:
-    print(r.content)
-```
-
-### 2.2 惰性模式 (Lazy)
-```python
-# 有 _ctx 和 _plan 时，访问数据时会自动重放计划
-bus_list = BusList(
-    _ctx=ctx,
-    _plan=GetNode(source="messages", filters=[...]),
-    _records=[]  # 初始为空，访问时惰性加载
-)
-# 只有在迭代时才实际查询
-for r in bus_list:  # 触发 _ensure_materialized()
-    print(r.content)
-```
-
-### 2.3 链式操作（构建查询计划）
+链式顺序建议：**`get()` → 结构化 `filter(field=value)` → `sort(by=..., reverse=...)` → `limit(n)`**。
 
 ```python
-result = (
-    ctx.bus.messages.get_recent(limit=100)
-    .filter(lambda m: m.role == "user")           # 添加 FilterNode
-    .filter(lambda m: "音乐" in m.content)         # 再添加 FilterNode
-    .sort(key=lambda m: m.timestamp, reverse=True) # 添加 SortNode
-    .limit(10)                                     # 添加 LimitNode
-)
-# 此时还没查询！_plan 是一棵树
-# 访问数据时一次性执行整个计划
-```
-
-### 2.4 计划节点类型
-
-| 节点 | 类型 | 说明 |
-|------|------|------|
-| `GetNode` | 叶节点 | 从数据源获取数据 |
-| `FilterNode` | 一元节点 | 过滤数据 |
-| `SortNode` | 一元节点 | 排序 |
-| `LimitNode` | 一元节点 | 限制数量 |
-| `TransformNode` | 一元节点 | 转换数据 |
-| `UnionNode` | 二元节点 | 合并两个数据集 |
-| `IntersectNode` | 二元节点 | 取交集 |
-| `DifferenceNode` | 二元节点 | 取差集 |
-
----
-
-## 3. 各总线详解
-
-### 3.1 Messages 总线
-
-```python
-# 获取最近消息
-recent = await ctx.bus.messages.get_recent(limit=50)
-
-# 获取特定对话的消息
-conv_msgs = await ctx.bus.messages.get_by_conversation(conv_id)
-
-# 查询消息（带过滤）
-msgs = await ctx.bus.messages.query(
-    filters={"role": "user", "content_contains": "音乐"},
-    sort_by="timestamp",
-    limit=10
+# 事件：取本插件相关事件，过滤 + 排序 + 截断
+events = await self.bus.events.get(plugin_id=self.plugin_id, max_count=50)
+recent = (
+    events
+    .filter(priority_min=1)
+    .filter(type="TASK_FINISHED")
+    .sort(by="timestamp", reverse=True)
+    .limit(20)
 )
 
-# 推送消息（插件→聊天）
-await ctx.push_message(
-    content="你好",
-    visibility=["chat"],
-    ai_behavior="respond"
-)
+# 消息
+msgs = await self.bus.messages.get(room_id=room_id, max_count=100)
+hot = msgs.filter(role="user").sort(by="timestamp", reverse=True).limit(10)
 ```
 
-### 3.2 Events 总线
+规则：
+
+- **结构化 `filter(field=value)`** 可被计划树下推、可重放；**`filter(callable)`** 只作用于本地快照，**不能**放在 `watch()` 之前（会被忽略或报错）。
+- `conversations` / `memory` **只读**，不支持 `watch()`，只提供有限快照读取。
+- 官方参数命名以 `max_count`（`get`）和 `by`/`reverse`（`sort`）为准；具体字段名以你目标版本的官方示例为最终依据。
+
+🟡 示意（组合示例，未本机运行）：
 
 ```python
-# 获取最近事件
-events = await ctx.bus.events.get_recent(limit=20)
-
-# 获取特定类型事件
-plugin_events = await ctx.bus.events.get_by_type("plugin_lifecycle")
-
-# 触发自定义事件
-await ctx.trigger_event("my_custom_event", data={"key": "value"})
-
-# 监听事件（通过装饰器）
-@on_event("my_custom_event")
-async def handle_my_event(self, event_data, **_):
-    self.logger.info(f"收到事件: {event_data}")
-```
-
-### 3.3 Lifecycle 总线
-
-```python
-# 获取生命周期事件
-lifecycle_events = await ctx.bus.lifecycle.get_recent(limit=10)
-
-# 获取特定插件的生命周期
-plugin_lifecycle = await ctx.bus.lifecycle.get_by_plugin("my_plugin")
-```
-
-### 3.4 Conversations 总线
-
-```python
-# 获取当前对话
-current_conv = await ctx.bus.conversations.get_current()
-
-# 获取对话历史
-conv_history = await ctx.bus.conversations.get_history(conv_id)
-
-# 创建新对话
-new_conv = await ctx.bus.conversations.create(title="新对话")
-
-# 切换对话
-await ctx.bus.conversations.switch(conv_id)
-```
-
-### 3.5 Memory 总线
-
-```python
-# 查询记忆
-memories = await ctx.bus.memory.query(
-    query="用户喜欢什么音乐",
-    limit=5,
-    tier="facts"  # Tier 0: embeddings, Tier 1: facts, Tier 2: reflections
-)
-
-# 存储记忆
-await ctx.bus.memory.store(
-    content="用户喜欢古典音乐",
-    tier="facts",
-    metadata={"source": "plugin:music_pusher"}
-)
-
-# 获取人设
-persona = await ctx.bus.memory.get_persona("master")
-```
-
----
-
-## 4. BusList 高级操作
-
-### 4.1 懒加载 + 重放
-
-```python
-# 第一步：构建查询计划（不执行）
-plan = ctx.bus.messages.get_recent(100)
-
-# 第二步：链式过滤（只修改计划）
-filtered = plan.filter(lambda m: m.role == "assistant")
-
-# 第三步：实际执行（重放计划）
-results = await filtered.reload(ctx)
-```
-
-### 4.2 变更订阅 (Watch)
-
-```python
-# 订阅消息变更
-watcher = ctx.bus.messages.get_recent(10).watch(ctx)
-
-# 当有新消息时，watcher 自动更新
-@watcher.on_change
-def on_new_message(delta: BusListDelta):
-    for added in delta.added:
-        print(f"新消息: {added.content}")
-    for removed in delta.removed:
-        print(f"已删除: {removed.id}")
-```
-
-### 4.3 集合操作
-
-```python
-# 并集
-user_msgs = ctx.bus.messages.query(filters={"role": "user"})
-assistant_msgs = ctx.bus.messages.query(filters={"role": "assistant"})
-all_chat = user_msgs.union(assistant_msgs)
-
-# 交集
-music_msgs = ctx.bus.messages.query(filters={"content_contains": "音乐"})
-recent_msgs = ctx.bus.messages.get_recent(50)
-recent_music = music_msgs.intersect(recent_msgs)
-
-# 差集
-read_msgs = ctx.bus.messages.query(filters={"read": True})
-all_msgs = ctx.bus.messages.get_recent(100)
-unread_msgs = all_msgs.difference(read_msgs)
-```
-
----
-
-## 5. Bus 内部机制
-
-### 5.1 修订追踪 (Revision Tracking)
-
-每次总线数据变更都会产生一个新的 revision：
-
-```python
-# rev.py 中的核心机制
-_BUS_LATEST_REV: dict[str, int] = {
-    "messages": 0,
-    "events": 0,
-    "lifecycle": 0,
-    "conversations": 0,
-    "memory": 0,
-}
-
-def dispatch_bus_change(bus_name: str, delta: BusListDelta):
-    """总线数据变更时调用，通知所有 watcher"""
-    _BUS_LATEST_REV[bus_name] += 1
-    for watcher in _watchers[bus_name]:
-        watcher.notify(delta, _BUS_LATEST_REV[bus_name])
-```
-
-### 5.2 本地缓存 (Local Cache)
-
-Messages 总线在子进程中维护本地缓存以优化性能：
-
-```python
-# messages.py 中的 _LocalMessageCache
-class _LocalMessageCache:
-    """子进程本地消息缓存，减少 ZMQ 往返"""
-    _max_size: int = 1000
-    _cache: list[MessageRecord]
-    _last_sync_rev: int = 0
-
-    def get_recent(self, limit: int) -> list[MessageRecord]:
-        """如果本地缓存足够，直接返回"""
-        if len(self._cache) >= limit:
-            return self._cache[:limit]
-        return None  # 缓存不足，需要从服务端获取
-```
-
-### 5.3 过滤器的惰性求值
-
-```python
-# 所有 filter/sort/limit 只构建计划树
-def filter(self, predicate):
-    return BusList(
-        _ctx=self._ctx,
-        _plan=FilterNode(child=self._plan, predicate=predicate),
-        _records=[]  # 不立即执行
+async def on_start(self, **_):
+    self._w = (
+        self.bus.messages
+        .get(room_id="default", max_count=10)
+        .filter(role="user")
+        .watch(self.ctx)
     )
 
-# 只在 _ensure_materialized() 时才执行
+    @self._w.subscribe(on="add")
+    def _on_add(delta):
+        for m in delta.added:
+            self.logger.info("新消息: {}", m.content)
+
+    self._w.start()
+    return Ok({})
+```
+
+---
+
+## 3. 变更订阅 Watch（✅ messages/events/lifecycle 支持）
+
+```python
+watcher = self.bus.events.get(plugin_id=self.plugin_id, max_count=20).watch(self.ctx)
+
+@watcher.subscribe(on="add")       # on ∈ {"add", "del", "change"}
+def on_new(delta):
+    for item in delta.added:
+        ...
+
+watcher.start()                     # 开始接收
+
+# 生命周期结束/停止时务必释放，避免泄漏
+@lifecycle("shutdown")
+async def on_shutdown(self, **_):
+    try:
+        watcher.stop()             # 或 unsubscribe()，以目标版本文档为准
+    except Exception:
+        pass
+```
+
+> ⚠️ 具体方法名（`stop` / `unsubscribe` / `close`）与 `delta` 结构请以目标 SDK 官方示例为准；上例为**示意**。
+
+---
+
+## 4. 各总线用法
+
+### 4.1 messages（读 + watch）
+
+```python
+room = await self.bus.messages.get(room_id="default", max_count=50)
+recent_users = room.filter(role="user").sort(by="timestamp", reverse=True).limit(10)
+```
+
+推送回聊天（**不是**往 Bus 写）：`await self.push_message(content="...", visibility=["chat"], ai_behavior="respond")`。
+
+### 4.2 events（读 + watch）
+
+```python
+events = await self.bus.events.get(plugin_id=self.plugin_id, max_count=50)
+```
+
+接收自定义/系统事件用装饰器，**没有** `ctx.trigger_event`：
+
+```python
+from plugin.sdk.plugin import on_event
+
+@on_event("my_custom_event")
+async def handle(self, event_data, **_):
+    self.logger.info("收到事件: {}", event_data)
+    return Ok({})
+```
+
+### 4.3 lifecycle（读 + watch）
+
+```python
+life = await self.bus.lifecycle.get(plugin_id="my_plugin", max_count=50)
+```
+
+### 4.4 conversations（只读快照）
+
+🟡 官方仅说明其为只读接口，未给出稳定的读写方法全集。**不要**假定 `create()` / `switch()` / `get_history()` 存在——需要对话管理能力时，先用 `self.plugins.call_entry(...)` 调用宿主相关入口，并在目标 SDK 上验证。
+
+### 4.5 memory（只读、有界、短 TTL）
+
+官方明确：**`self.memory` 已被移除**；`await self.bus.memory.get(bucket_id="default", limit=20)` 返回的是**有界的、内存中的短期 TTS 事件**（约 1 小时 TTL），**不是**持久事实或人格记忆库。
+
+```python
+recent_tts = await self.bus.memory.get(bucket_id="default", limit=20)
+```
+
+- ❌ 不存在 `memory.store(...)`、`memory.get_persona(...)`、`tier="facts"` 之类持久化/分层写入接口。
+- `ctx.query_memory` 是**已弃用的占位**，不自带语义检索。
+- **公开插件 SDK 目前没有结构化持久记忆召回接口**。需要长期记忆请自行用 `self.store` / `self.db` 设计（见 [35-store-database-internals](35-store-database-internals.md)）。
+
+---
+
+## 5. 内部机制（历史源码逆向 · 未在本机验证）
+
+> 本节解释"为什么这样设计"，便于排查历史代码。相关命名可能随版本演进变化。
+
+### 5.1 修订追踪（Revision）
+
+```python
+_BUS_LATEST_REV: dict[str, int] = {"messages": 0, "events": 0, "lifecycle": 0,
+                                   "conversations": 0, "memory": 0}
+
+def dispatch_bus_change(bus_name: str, delta):
+    _BUS_LATEST_REV[bus_name] += 1
+    for w in _watchers[bus_name]:
+        w.notify(delta, _BUS_LATEST_REV[bus_name])
+```
+
+### 5.2 子进程本地缓存
+
+```python
+class _LocalMessageCache:          # 减少 ZMQ 往返
+    _max_size: int = 1000
+    _cache: list
+    _last_sync_rev: int = 0
+```
+
+### 5.3 链式操作只建计划树，物化时才执行
+
+```python
+def filter(self, predicate):
+    return BusList(_ctx=self._ctx, _plan=FilterNode(child=self._plan, predicate=predicate))
+
 def _ensure_materialized(self):
-    if self._plan is None:
-        return  # 已经是急切模式
-    if self._ctx is None:
-        return  # 没有上下文，无法执行
-
-    # 从叶节点开始递归执行计划树
-    raw_data = self._plan.execute(self._ctx)
-    self._records = list(raw_data)
-    self._plan = None  # 执行后转为急切模式
+    if self._plan is None or self._ctx is None:
+        return
+    self._records = list(self._plan.execute(self._ctx))
+    self._plan = None                    # 执行后转急切模式
 ```
 
 ---
 
-## 6. 与插件开发的关联
+## 6. 何时用哪条总线
 
-### 6.1 何时使用 Messages 总线
-- 获取聊天历史
-- 推送插件生成的内容
-- 监听用户消息
+| 需求 | 用哪条 | 备注 |
+|------|--------|------|
+| 读聊天历史 / 监听用户消息 | messages | 支持 watch |
+| 监听系统/自定义事件 | events | 支持 watch；发送侧无 emit |
+| 观察插件状态变更 | lifecycle | 支持 watch |
+| 读对话上下文 | conversations | 只读快照 |
+| 读短期 TTS 事件 | memory | 只读、有界、短 TTL |
 
-### 6.2 何时使用 Events 总线
-- 监听系统事件（启动、停止、配置变更）
-- 触发自定义事件供其他插件消费
-- 实现插件间松耦合通信
-
-### 6.3 何时使用 Memory 总线
-- 查询用户的长期记忆
-- 存储插件提取的事实
-- 获取角色人设信息
-
-### 6.4 何时使用 Conversations 总线
-- 管理对话上下文
-- 切换对话会话
-- 获取对话历史
+**跨插件通信**（A 插件通知 B 插件）请走 `self.plugins.call_entry("b:entry", {...})`，见 [28-inter-plugin-communication](28-inter-plugin-communication.md)。Bus **不承担**跨插件消息投递。
 
 ---
 
-## 7. 性能优化建议
+## 7. 性能建议（现行 API 版）
 
-### 7.1 使用惰性查询
 ```python
-# ✅ 好：构建计划后一次性执行
-results = (
-    ctx.bus.messages.get_recent(200)
-    .filter(lambda m: m.role == "user")
-    .filter(lambda m: "关键词" in m.content)
-    .limit(5)
-)
-# 一次 ZMQ 往返
+# ✅ 一次规划：结构化 filter 可下推，配合 sort/limit 减少数据量
+candidates = await self.bus.messages.get(room_id="default", max_count=200)
+top = candidates.filter(role="user").sort(by="timestamp", reverse=True).limit(5)
 
-# ❌ 差：多次查询
-all_msgs = await ctx.bus.messages.get_recent(200).reload(ctx)
-filtered = [m for m in all_msgs if m.role == "user"]  # 客户端过滤，浪费带宽
+# ❌ 旧写法（已移除）：get_recent(...).reload(ctx)
 ```
 
-### 7.2 使用 limit 限制数据量
-```python
-# ✅ 好：限制返回数量
-ctx.bus.messages.get_recent(limit=10)
-
-# ❌ 差：不限制，可能返回大量数据
-ctx.bus.messages.get_recent()  # 默认可能返回所有
-```
-
-### 7.3 避免频繁 reload
-```python
-# ✅ 好：复用已加载的数据
-plan = ctx.bus.messages.get_recent(50)
-data = plan  # 惰性
-for item in data:  # 第一次触发加载
-    process(item)
-# data 已转为急切模式，后续访问不触发重查
-
-# ❌ 差：每次都 reload
-for i in range(10):
-    data = await ctx.bus.messages.get_recent(50).reload(ctx)
-    process(data[i])
-```
+- 用 `max_count` / `limit` 限制数据量，避免拉全量再客户端过滤。
+- 结构化 `filter(field=value)` 优于 `filter(lambda ...)`（后者只在本地快照生效，无法下推）。
+- 复用同一次查询结果，不要为了刷新反复重建查询。
 
 ---
 
 ## 8. 常见陷阱
 
-### 陷阱 31-1：Bus 在 on_init 中不可用
-```python
-# ❌ 错误：on_init 时 Bus 可能未完全初始化
-@lifecycle("on_init")
-async def on_init(self, **_):
-    msgs = await self.ctx.bus.messages.get_recent(10).reload(self.ctx)
+### 31-1：以为 Bus 能"发事件给别的插件"
+**现象**：找不到 `emit/publish/trigger_event`。
+**正解**：Bus 是只读门面。跨插件通知用 `call_entry`，对宿主产出用 `push_message` / `report_status`。
 
-# ✅ 正确：在 on_start 中使用
-@lifecycle("on_start")
-async def on_start(self, **_):
-    msgs = await self.ctx.bus.messages.get_recent(10).reload(self.ctx)
-```
+### 31-2：在 `on_init` 里查 Bus
+**现象**：Bus/上下文尚未就绪。
+**正解**：移到 `on_start` 之后。
 
-### 陷阱 31-2：忘记 await reload
-```python
-# ❌ 错误：没有 reload，plan 不会执行
-plan = ctx.bus.messages.get_recent(10).filter(lambda m: m.role == "user")
-for m in plan:  # 可能为空或报错
-    print(m)
+### 31-3：把 `filter(callable)` 放在 `watch()` 之前
+**现象**：watch 不按预期触发。
+**正解**：watch 前的过滤必须用结构化 `filter(field=value)`。
 
-# ✅ 正确：显式 reload
-plan = ctx.bus.messages.get_recent(10).filter(lambda m: m.role == "user")
-for m in await plan.reload(ctx):
-    print(m)
-# 或者直接用（__iter__ 会自动触发 _ensure_materialized）
-for m in plan:
-    print(m)
-```
+### 31-4：以为 `bus.memory` 能存长期记忆
+**现象**：写入的内容很快消失或读不到。
+**正解**：`memory` 只读且有界、短 TTL；持久化用 `self.store` / `self.db`。
 
-### 陷阱 31-3：Watcher 内存泄漏
-```python
-# ❌ 错误：注册了 watcher 但从未取消
-watcher = ctx.bus.messages.get_recent(10).watch(ctx)
-# ... watcher 持续运行
-
-# ✅ 正确：在 on_stop 中取消
-@lifecycle("on_stop")
-async def on_stop(self, **_):
-    if hasattr(self, '_watcher'):
-        self._watcher.unsubscribe()
-```
+### 31-5：Watcher 泄漏
+**现象**：多次 reload 后回调重复触发、内存增长。
+**正解**：在 `shutdown`/`reload` 钩子里显式释放 watcher。

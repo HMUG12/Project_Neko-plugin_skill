@@ -4,7 +4,7 @@ WebRouter：网页抓取 / 搜索业务域。
 设计要点（对应 skill 篇章）：
   · 真正干活的代码藏在 _call_firecrawl（深函数），entry 只做薄封装（40 §5）
   · 同步 SDK 用 asyncio.to_thread 包，不阻塞事件循环（10 性能 / 42 §4.5）
-  · 用户给的 URL 先过 _is_safe_url（43 §4 进阶 SSRF 守卫）
+  · 用户给的 URL 先过 _is_safe_url（43 §4 URL 输入预筛选；不是完整 SSRF 防护）
   · @llm_tool 参数用 Any + 入口内校验，防 LLM 违反 schema 导致 TypeError（44 §5）
   · 每个会失败的调用都包 try/except → Err（44 §6）
 """
@@ -50,7 +50,9 @@ class WebRouter:
             return {"output": f"调用失败：{e}", "is_error": True}
 
     # ──────────────────────────────────────────────
-    # SSRF 守卫：解析 IP 再判，防 2130706433 / IPv6 简写 / @混淆（43 §4）
+    # URL 输入预筛选：解析 IP 再判，防 2130706433 / IPv6 简写 / @混淆（43 §4）
+    # ⚠️ 仅降低风险，不是完整 SSRF 防护：DNS rebinding / TOCTOU / 重定向
+    #    到内网、以及"请求由第三方云服务代发"等情况它挡不住（见 43 §4）。
     # ──────────────────────────────────────────────
     def _is_safe_url(self, raw: str) -> bool:
         try:
@@ -62,22 +64,21 @@ class WebRouter:
             return False
         if host in ("localhost", "127.0.0.1", "0.0.0.0", "::1") or host.endswith(".local"):
             return False
-        if host.startswith(("192.168.", "10.", "172.16.", "172.17.", "172.18.",
-                            "172.19.", "172.2", "172.30.", "172.31.")):
-            return False
         if host in ("169.254.169.254", "100.100.100.200", "metadata.google.internal"):
             return False
+        # 解析出的 IP 与真正连接时的 IP 可能不同（DNS rebinding），此处只是预筛
         try:
             for info in socket.getaddrinfo(host, None):
                 ip = ipaddress.ip_address(info[4][0])
-                if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved:
+                if (ip.is_private or ip.is_loopback or ip.is_link_local
+                        or ip.is_reserved or ip.is_multicast):
                     return False
         except Exception:
             return False
         return True
 
     # ──────────────────────────────────────────────
-    # AI 入口：抓取网页（SSRF 守卫 + 防御性入口）
+    # AI 入口：抓取网页（URL 输入预筛选 + 防御性入口）
     # ──────────────────────────────────────────────
     @plugin_entry(
         id="scrape_page",

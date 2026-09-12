@@ -3,13 +3,23 @@
 
 
 
-> 一套面向 [N.E.K.O](https://github.com) 插件开发的skil辅助，Agent编辅助，从程搭建到避坑上线，全流程覆盖。
+> 一套面向 [N.E.K.O](https://github.com) 插件开发的 Skill 辅助，由 Agent 辅助，从搭建到避坑上线，全流程覆盖。
 
 [![Version](https://img.shields.io/badge/version-neko--plugin--dev(4.1.0)-blueviolet.svg)](CHANGELOG)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![N.E.K.O SDK](https://img.shields.io/badge/N.E.K.O_SDK-0.1.x-blue.svg)]()
 [![Python](https://img.shields.io/badge/Python-3.11%2B-blue.svg)]()
 [![TSX](https://img.shields.io/badge/TSX-React_18-61dafb.svg)]()
+
+## 已验证目标版本（先看这里）
+
+| 项目 | 值 |
+|------|----|
+| 目标 SDK 约束 | `recommended = ">=0.1.0,<0.2.0"`，`supported = ">=0.1.0,<0.3.0"` |
+| 官方文档核对日期 | 2026-09-12（[Quick Start](https://project-neko.online/plugins/quick-start) · [Plugin Config](https://project-neko.online/plugins/plugin-toml) · [SDK 迁移清单](https://project-neko.online/plugins/migration-v0.9)） |
+| 运行验证状态 | **未在干净环境跑通端到端示例**。本文档的“已核实”仅指与上述官方文档逐条对照，**不等于**已在本机 SDK 上运行通过 |
+
+> ⚠️ 只有本表对齐的 SDK 版本区间内结论才可靠。官方文档仍可能继续变化；每次主 SDK 变更后请重跑 `uv run neko-plugin check <id> --strict` 与示例验证，并更新本表与核对日期。凡是文中未标注“已验证”的代码片段，一律视为**示意**，上手前先在目标 SDK 上验证。
 
 ***
 
@@ -48,7 +58,7 @@
 |------|---------|--------|------|--------|---------|
 | V1.00 | file\_manager | 12 | 10 | 17 | 初版：基础架构 + 权限 + 撤销 + 日志 |
 | V1.01 | file\_manager + ai\_singer | 15 | 10 | 21 | +云端 API +多面板 +富 UI 组件 |
-| **neko-plugin-dev(4.1.0)**（当前）| + 13 外部开源 skill 融合 + 本地 plugins/ 逆向 + **插件市场 31 插件源码逆向** + examples 示例插件 + **统领工作流 00**（用户「AI 开发协作协调器」skill 融合，最高优先级） | **51** | **20** | **45** | +39 官方指南 +40–50 融合/逆向篇（工程纪律/YAGNI/反 AI 味/网页集成/安全/本地逆向/记忆/LLM路由/压缩脱敏/陪伴状态机/**市场 31 插件逆向**）+ 端到端可运行示例插件 |
+| **neko-plugin-dev(4.1.0)**（当前）| + 13 外部开源 skill 融合 + 本地 plugins/ 逆向 + **插件市场 31 插件源码逆向** + examples 示例插件 + **可选工作流 00**（用户「AI 开发协作协调器」skill 融合，大型新插件按需启用） | **51** | **20** | **45** | +39 官方指南 +40–50 融合/逆向篇（工程纪律/YAGNI/反 AI 味/网页集成/安全/本地逆向/记忆/LLM路由/压缩脱敏/陪伴状态机/**市场 31 插件逆向**）+ examples 示例插件（**尚未跑通端到端验证**） |
 | V2.0 | + music\_pusher + qq\_auto\_reply + **N.E.K.O-main 逆向** | 38 | 20 | 45 | +Router +@llm\_tool +Static UI +外部协议 +错误/并发模式 +主程序 10 篇内部机制 |
 
 ## 仓库结构
@@ -58,14 +68,14 @@ Project_Neko-plugin_skill/
 ├── README.md                              ← 你正在看的文件
 ├── CHANGELOG.md                           ← 版本变更日志
 ├── LICENSE                                ← MIT 协议
-├── assets/                                ← 图片资源
-│   └── banner.png                         ← README 顶部 banner
 └── neko-plugin-dev(4.1.0)/                 ← neko-plugin-dev(4.1.0) 技能包本体
     ├── SKILL.md                           ← 技能入口（TRAE 加载这个文件）
-    └── references/                        ← 51 篇专题参考文档（含 00 统领工作流 + 39 官方指南 + 40–50 融合/逆向篇）
+    ├── examples/                          ← 示例插件（尚未跑通端到端验证，见 examples/README.md）⭐
+    │   └── web_assistant/                 ← plugin.toml + __init__.py + routers/ + ui/ + config.example.toml + .gitignore
+    └── references/                        ← 51 篇专题参考文档（含 00 可选工作流 + 39 官方指南 + 40–50 融合/逆向篇）
         │
-        │ ── 统领篇（1 篇 · 最高优先级）── ⭐
-        ├── 00-development-coordinator.md   ← 五阶段工作流 + 状态持久化（P0）
+        │ ── 可选篇（1 篇 · 大型新插件按需启用）── ⭐
+        ├── 00-development-coordinator.md   ← 五阶段工作流 + 最小状态持久化（可选，非强制前置）
         │
         │ ── 基础篇（4 篇）──
         ├── 01-plugin-toml.md
@@ -155,7 +165,7 @@ Project_Neko-plugin_skill/
 Copy-Item -Path ".\neko-plugin-dev(4.1.0)" -Destination "$env:USERPROFILE\.trae\skills\neko-plugin-dev" -Recurse -Force
 ```
 
-> 💡 复制到 TRAE 时建议去掉 `(4.0.0)` 后缀，避免路径中的特殊字符（括号与英文句点）。
+> 💡 复制到 TRAE 时建议去掉 `(4.1.0)` 后缀，避免路径中的特殊字符（括号与英文句点）；重命名后不影响技能加载。
 
 或直接在 TRAE 的「技能管理」里点「从本地文件夹导入」，选择 `neko-plugin-dev(4.1.0)` 文件夹即可。
 
@@ -183,21 +193,21 @@ plugin.toml  →  __init__.py  →  ui/  →  i18n/  →  docs/  →  测试  �
 
 ### 基础 10 条（V1.00 起）
 
-1. **文件名全小写 + 下划线** — 目录名与 `plugin.toml` 的 `entry` 包名严格一致
+1. **文件名全小写 + 下划线** — 目录名与 `plugin.toml` 的 `entry` 包名一致（强烈建议；不一致仍可能加载，但打包/工具链会出错）
 2. **Python 文件无 BOM** — `UTF-8 without BOM`，否则 `SyntaxError`
-3. **`_ctx=None`** — 所有 `@plugin_entry` 和 `@ui.action` 方法必须包含
-4. **`**_`** — 所有 `@lifecycle` 方法必须包含
-5. **启动 < 10 秒** — 耗时操作丢 `asyncio.create_task()` 后台执行
-6. **无** **`executemany`** — 数据库批量操作必须逐行 `await session.execute()`
-7. **手动同步 + 删 `__pycache__`** — 改完同步后**必须**删部署目录的 `__pycache__/`
-8. **权限默认** **`false`** — 安全优先：总开关 + 逐操作授权
+3. **上下文用 `self.ctx`** — 框架**不会**给 `@plugin_entry`/`@ui.action`/`@lifecycle` 传入任何 `ctx` 参数（真实插件代码 0 处使用 `_ctx=None`）；需要运行时上下文用 `self.ctx` 属性，不要给方法加 `_ctx=None` 参数
+4. **`**_` 可选 catch-all** — `@lifecycle`/`@plugin_entry`/`@ui.action` 想兼容框架未来可能传入的额外关键字可加 `**_`，官方示例普遍使用但**非强制**；Best Practice 建议「仅在有意消费额外参数时」才加
+5. **启动默认 < 10 秒（可配）** — `plugin.toml` 的 `[plugin_runtime].timeout` 在 `0 < timeout <= 300` 范围可调；耗时操作仍建议丢 `asyncio.create_task()` 后台执行
+6. **无 `executemany`** — 数据库批量操作必须逐行 `await session.execute()`
+7. **优先用官方开发模式 Reload** — 官方推荐在源码目录（`plugin/plugins/`）或用开发者模式 Load unpacked 就地开发，改完点插件详情页 **Reload** 即可生效，日常无需反复复制；仅在手改源码/已安装包或行为不更新时，才删目标目录 `__pycache__/` 作为**诊断分支**（详见 06 与 17）
+8. **权限默认 `false`** — 安全优先：总开关 + 逐操作授权
 9. **AI 需要绝对路径** — 拒绝非绝对路径，错误消息引导 AI 先搜索
-10. **磁盘 I/O 用** **`asyncio.to_thread`** — 不阻塞事件循环
+10. **磁盘 I/O 用 `asyncio.to_thread`** — 不阻塞事件循环
 
 ### V2.0 新增 10 条
 
 11. **`plugin.toml` dependencies 用内联表** — `openai = ">=1.0.0"` 而非列表格式
-12. **`@plugin_entry` 在上，`@ui.action` 在下** — 双装饰器叠加时顺序不能反
+12. **双装饰器：`@ui.action` 在上，`@plugin_entry` 在下**（官方示例顺序，**本机未运行验证**）— 叠加时 `@ui.action(label=..., tone=..., refresh_context=True)` 在外、`@plugin_entry` 在内；最终以你目标 SDK 的官方示例为准，升级 SDK 后重测
 13. **`@llm_tool` 用 `*,`** — 强制 keyword-only，避免位置参数错误
 14. **Router 在 `__init__` 中注册** — `include_router` 必须在 `super().__init__` 之后
 15. **第三方库惰性导入 + 错误缓存** — `ImportError` 后缓存失败，不重复重试
@@ -205,17 +215,17 @@ plugin.toml  →  __init__.py  →  ui/  →  i18n/  →  docs/  →  测试  �
 17. **`on_init` 不调其他插件** — 跨插件调用放在 `on_start` 中
 18. **`push_message` 大文件用 URL** — 大文件 base64 体积膨胀 33%
 19. **Router entry 设 prefix** — 多 Router 用 prefix 避免 ID 冲突
-20. **Bus 查询用惰性链式** — `filter().limit()` 而非多次 `reload()`
+20. **Bus 查询用官方可重放链** — `get(...).filter(field=value).sort(by=...).limit()`；旧 `get_recent()` / `reload()` / `union()/intersect()/difference()` 已移除
 
 ***
 
 ## 文档导航
 
-### 基础篇（必读）
+### 基础篇（01–04 必读；00 可选）
 
 | #  | 文档                                                                       | 何时打开      |
 | -- | ------------------------------------------------------------------------ | --------- |
-| 00 | [开发协作协调器](neko-plugin-dev(4.1.0)/references/00-development-coordinator.md) | **统领工作流（P0）**：五阶段+状态持久化，用户说开发插件时最先跑 | **用户说"开发插件/启动开发协作"时** |
+| 00 | [开发协作协调器](neko-plugin-dev(4.1.0)/references/00-development-coordinator.md) | **可选工作流（非必读）**：五阶段 + 最小状态持久化，适合需求复杂的大型新插件 | 用户明确说「启动开发协作 / 用结对编程模式」，或插件规模大、需求含糊时 |
 | 01 | [plugin.toml 配置](neko-plugin-dev(4.1.0)/references/01-plugin-toml.md)     | 新建插件、加配置项 |
 | 02 | [Python 后端](neko-plugin-dev(4.1.0)/references/02-python-plugin.md)        | 写核心逻辑     |
 | 03 | [UI 设置面板](neko-plugin-dev(4.1.0)/references/03-ui-settings.md)          | 做设置界面     |
@@ -236,7 +246,7 @@ plugin.toml  →  __init__.py  →  ui/  →  i18n/  →  docs/  →  测试  �
 | #  | 文档                                                                  | 何时打开        |
 | -- | ------------------------------------------------------------------- | ----------- |
 | 05 | [单元测试](neko-plugin-dev(4.1.0)/references/05-testing.md)            | 开发完成时       |
-| 06 | [部署同步](neko-plugin-dev(4.1.0)/references/06-deployment.md)         | 每次修改后       |
+| 06 | [运行与部署](neko-plugin-dev(4.1.0)/references/06-deployment.md)       | 改完不生效 / 交付时 |
 | 07 | [踩坑大全](neko-plugin-dev(4.1.0)/references/07-gotchas.md)            | 遇到 bug 时    |
 
 ### 实战篇·一（V1.01 · 基于 `ai_singer`）
@@ -337,7 +347,9 @@ AI：（加载 neko-plugin-dev 技能）我先帮你建目录结构，再按 plu
 
 ```
 你：我的插件启动报 PluginEntryDirectoryMismatch。
-AI：这是铁律 #1 触发。检查 plugin.toml 的 entry 字段包名是否与目录名大小写完全一致…
+AI：这说明加载器/打包器没找到 entry 对应的包。先核对 plugin.toml 的 entry 包名、目录名、plugin.id 是否对齐
+   （官方强烈建议三者一致；开发期旧发现机制可能容忍不一致，但打包与生产安装不允许）。
+   再确认插件放在正确位置（源码树 plugin/plugins/ 或开发者模式注册的目录）…
 ```
 
 ### 场景 C：AI 调不通
@@ -351,7 +363,11 @@ AI：这是 AI 友好设计问题。entry 的 description 必须三要素齐全�
 
 ```
 你：我改了 __init__.py，但插件行为没变。
-AI：铁律 #7 触发！除了同步文件，还要删除部署目录的 __pycache__/，详见 17-pyc-cache-trap.md…
+AI：先确认你是哪种开发方式（06 分三场景）：
+   1) 源码树/开发者模式：点插件详情页 Reload（改动依赖后还需重启插件）；
+   2) 手工复制到安装目录：确认源文件已覆盖，再删目标 __pycache__/ 作为诊断分支；
+   3) 已安装包：重新构建并导入 .neko-plugin。
+   清缓存是"行为不更新"的兜底诊断，不是常规必做项，详见 17-pyc-cache-trap.md…
 ```
 
 ### 场景 E：拆分大型插件（V2.0）
@@ -384,21 +400,26 @@ AI：（加载 12-master-checklist）按 9 大类 80+ 项逐一过…
 
 ***
 
-## 部署到 N.E.K.O 的标准动作
+## 运行与部署（三种场景，默认走官方开发模式）
 
-工作区改完后，**必须**手动同步到 N.E.K.O 的运行目录并删除 `__pycache__/`：
+官方推荐**不要**把源码手工复制进用户插件目录。按你的情况选：
 
-```powershell
-# 1. 把工作区文件覆盖到部署目录
-$src = "e:\你的工作区\你的插件\*"
-$dst = "$env:LOCALAPPDATA\N.E.K.O\plugins\你的插件\"
-Copy-Item -Path $src -Destination $dst -Recurse -Force
+| 场景 | 代码从哪加载 | 改完怎么生效 |
+|------|-------------|-------------|
+| **A. 源码树开发（推荐）** | `N.E.K.O/plugin/plugins/<id>/`，N.E.K.O 直接扫描该目录 | `uv run neko-plugin check <id> --strict` → 插件详情页 **Reload**；改依赖后重启该插件 |
+| **B. 开发者模式 Load unpacked** | 就地注册的源码绝对路径目录（文件夹名须与 entry 包名和 plugin.id 一致） | 编辑源码 → **Reload**；改依赖 → 重启插件 |
+| **C. 已安装包 / 手工同步** | 安装目录代码只读；配置/数据/缓存始终在用户数据目录 | 交付：`uv run neko-plugin build <id> --out <id>.neko-plugin` 再导入；仅在手工覆盖已安装目录时才需要删目标 `__pycache__/` |
 
-# 2. ⚠️ 删除部署目录的 __pycache__/（铁律 #7）
-Get-ChildItem -Path $dst -Recurse -Filter "__pycache__" -Directory | Remove-Item -Recurse -Force
-
-# 3. 重启 N.E.K.O 让变更生效
+```bash
+# 官方标准循环（源码树场景）
+uv run neko-plugin init my_plugin --type plugin --name "My Plugin"
+uv run neko-plugin check my_plugin --strict        # 先过静态检查
+uv run python launcher.py                           # 启动源码版 N.E.K.O → Plugins 页启动/Reload/触发入口
 ```
+
+> ⚠️ `neko-plugin check` 通过 **不等于** 运行通过；打包成功也 ≠ 功能测试通过。示例插件本身也需在目标 SDK 上实际加载、调用、打开 UI 后才能称“可运行”。
+>
+> 用户运行时配置位于用户数据目录（Windows 为 `%LOCALAPPDATA%\N.E.K.O\plugins\<id>\config\plugin.toml`），**不要**把密钥写进源码 manifest 并提交。
 
 详见 [06-deployment.md](neko-plugin-dev(4.1.0)/references/06-deployment.md) 和 [17-pyc-cache-trap.md](neko-plugin-dev(4.1.0)/references/17-pyc-cache-trap.md)。
 
@@ -410,7 +431,7 @@ Get-ChildItem -Path $dst -Recurse -Filter "__pycache__" -Directory | Remove-Item
 
 ### 主题扩展 38 → 51
 
-- 🆕 统领工作流 00：融合用户「AI 开发协作协调器」skill，五阶段工作流 + 状态持久化（最高优先级）
+- 🆕 可选工作流 00：融合用户「AI 开发协作协调器」skill，五阶段工作流 + 最小状态持久化（大型新插件按需启用，**非强制前置**）
 - 🆕 融合外部最佳实践 10 篇（40–49）：工程纪律、反 AI 味 UI、网页集成、安全加固、本地逆向、融合速查、持久记忆、LLM 路由、压缩脱敏、陪伴状态机
 - 🆕 实战篇·七 1 篇（50）：**插件市场 31 个已上架插件源码逆向**，六类成功插件范式（系统自动化 / 邮件 / 搜索 / 教育 OCR / 游戏控制 / 外部程序桥接）⭐
 
@@ -420,9 +441,9 @@ Get-ChildItem -Path $dst -Recurse -Filter "__pycache__" -Directory | Remove-Item
 - F1–F8：多轮对齐、YAGNI、UI 简洁、上下文审计、配置最小化、错误信息友好、推送克制、外发压缩脱敏
 - **F9（新增）**：写复杂插件先抄真实市场骨架（系统自动化用三合一装饰器+窗口锁定+轮询；游戏用独立 data 进程+状态机；外部程序用 HTTP 桥+退避；教育用按功能域拆分 entry）
 
-### 新增 examples/ 可运行示例插件
+### 新增 examples/ 示例插件（尚未跑通端到端验证）
 
-- 端到端融合 40–45 的示例插件，可扩展 46–50，演示最佳实践落地
+- 融合 40–45 的示例插件骨架，可扩展 46–50，演示最佳实践落地；上手前先 `uv run neko-plugin check web_assistant --strict` 并在目标 SDK 上加载验证
 
 ### 文档导航 & 结构
 
@@ -476,6 +497,18 @@ Get-ChildItem -Path $dst -Recurse -Filter "__pycache__" -Directory | Remove-Item
 - 🆕 references/README.md 加入云 API / 多面板 / 自定义 UI 的交叉引用
 
 
+## 发布前检查（维护者）
+
+改完文档或示例准备发版时，逐项过：
+
+- [ ] **Markdown 本地链接**可解析（相对路径存在、锚点存在），无指向已删除文件。
+- [ ] **README 与 SKILL.md 的「铁律」逐条一致**（编号、措辞、方向不得相反）；references/README.md 同步。
+- [ ] **示例可加载性**：`examples/web_assistant/` 的 `plugin.toml` 有 `[[plugin.ui.panel]].entry` 且该文件存在、`title` 字段正确；依赖已声明。
+- [ ] **敏感字段检查**：全仓无真实 API Key/Token；示例配置只留空值或 `config.example.toml` 占位。
+- [ ] **运行记录**：至少记录一次在目标 SDK 上的 `neko-plugin check <id> --strict` 输出，以及加载/调用入口/打开 UI/Reload 的结果（通过 or 失败原因）。
+- [ ] **版本与日期**：更新首页「已验证目标版本」表的核对日期；`CHANGELOG.md` 路径与当前版本目录名一致。
+
+***
 
 本技能基于实战持续迭代，欢迎提 Issue / PR：
 

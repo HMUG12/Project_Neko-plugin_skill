@@ -5,8 +5,9 @@
 ## 1. 4 层 Token 成本模型（token-saviour：输入才是账单大头）
 
 | 图层 | 含义 | 首选 | 忌用 |
-| 代码读取输入 | 理解代码/调用路径 | 语义检索 | 整文件 dump |
-| 命令输出输入 | 嘈杂 stdout | 摘要化输出 | 原始全文 |
+|------|------|------|------|
+| 代码读取 | 理解代码/调用路径 | 语义检索 | 整文件 dump |
+| 命令输出 | 嘈杂 stdout | 摘要化输出 | 原始全文 |
 | 散文输出 | 长篇解释 | 精简模式 | — |
 | 代码输出 | 写代码 | YAGNI 最小代码 | 过度抽象 |
 
@@ -32,13 +33,17 @@
 
 ## 3. 本地 PII / DLP 红挡（prompthakcer security 类别，100% 本地）
 
-发往外发 LLM/API **之前**先正则脱敏，绝不把原始密钥/隐私送出去：
+发往外发 LLM/API **之前**先做本地正则脱敏，**降低**敏感串外发风险（注意：正则脱敏**非完备**，只是降低概率，不是"绝不泄露"的保证）：
 
 | 敏感类型 | 正则（示意） | 替换 |
+|---------|------------|------|
 | 信用卡 | `\b\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}\b` | `[REDACTED-CARD]` |
 | 邮箱 | `\b[\w.+-]+@[\w-]+\.[\w.-]+\b` | `[REDACTED-EMAIL]` |
 | SSN | `\b\d{3}-\d{2}-\d{4}\b` | `[REDACTED-SSN]` |
-| API Key | `(sk\|api\|token\|key)[-_ ]?[A-Za-z0-9]{20,}`（示意） | `[REDACTED-KEY]` |
+| OpenAI 风格 Key | `\bsk-[A-Za-z0-9_-]{16,}\b` | `[REDACTED-KEY]` |
+| 通用 API Key/Ticket | `(?i)\b(api[_-]?key|token\|secret\|bearer)\b\s*[:=]\s*["']?[A-Za-z0-9_\-\.]{16,}` | `[REDACTED-KEY]` |
+
+> **覆盖面声明**：以上规则只能命中**常见格式**。自定义格式的密钥、拆分/编码后的敏感串、非英文语境下的身份证号、银行卡带分隔符变体等**都可能漏过**。因此：① 不要把"已脱敏"当作"可以随便外发"；② 源头减少敏感数据进入 prompt 才是根本。
 
 全部本地处理，提示词不出设备；可配置开关 + 自定义正则。
 
@@ -50,7 +55,10 @@
 import re
 
 class PromptHygiene:
+    # 顺序即优先级：先挡更具体的（Key），再挡通用模式
     _PII = [
+        (r"\bsk-[A-Za-z0-9_-]{16,}\b", "[REDACTED-KEY]"),
+        (r"(?i)\b(api[_-]?key|token|secret|bearer)\b\s*[:=]\s*[\"']?[A-Za-z0-9_\-\.]{16,}", "[REDACTED-KEY]"),
         (r"\b\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}\b", "[REDACTED-CARD]"),
         (r"\b[\w.+-]+@[\w-]+\.[\w.-]+\b", "[REDACTED-EMAIL]"),
         (r"\b\d{3}-\d{2}-\d{4}\b", "[REDACTED-SSN]"),
@@ -68,7 +76,7 @@ class PromptHygiene:
         self.enable_compress = enable_compress
 
     def transform(self, text: str) -> str:
-        # 1. 先脱敏（绝不外泄原始敏感串）
+        # 1. 先脱敏：降低外发风险（正则非完备，不等于"已安全"）
         if self.enable_redact:
             for pat, rep in self._PII:
                 text = re.sub(pat, rep, text)
@@ -86,5 +94,6 @@ class PromptHygiene:
 
 - ❌ 把压缩用在结构化输入（JSON schema / 代码）→ 破坏格式。压缩只面向用户自然语言 prompt。
 - ❌ 脱敏依赖远程服务（必须本地正则，否则敏感串先出站再回来已泄露）。
+- ❌ 把"已跑正则脱敏"当作"可以放心外发"——覆盖面有限，漏网敏感串仍然存在（见 §3 覆盖面声明）。
 - ❌ 忽视"输入层"优化，只在输出上抠 token（账单大头在输入，见 §1）。
 - ❌ 把 prompthakcer 当注入防御用——它就是文本转换，**无注入检测**（注入防御见 43 + 47 的 prompt_guard）。

@@ -144,13 +144,13 @@ def _path_in_scan_range(self, path: str) -> bool:
 
 ---
 
-### 9. 部署目录中旧文件覆盖新代码
+### 9. 改动没到运行位置 / 加载了旧副本
 
 **现象**：修改了工作区代码但插件行为不变
 
-**原因**：部署目录 `C:\Users\Admin\AppData\Local\N.E.K.O\plugins\` 中有旧版本文件，N.E.K.O 加载的是旧文件。
+**原因**：修改的是工作区，而运行位置（源码树 / 已注册目录 / 用户插件目录）里仍是旧文件，N.E.K.O 加载的是旧副本。
 
-**修复**：手动同步工作区文件到部署目录，然后重启 N.E.K.O。
+**修复**：源码树/开发者模式点 **Reload** 生效；手工同步场景确认已覆盖到运行位置（见 [06-deployment.md](06-deployment.md)）。
 
 ---
 
@@ -379,9 +379,9 @@ async def save_config(self, speech_rate: float = None, **_):
 
 > 详见 [17-pyc-cache-trap.md](17-pyc-cache-trap.md)
 
-**现象**：修改了 `__init__.py`，同步到部署目录，重启 N.E.K.O，但日志显示旧代码仍在运行，已删除的 entry 仍然存在，已删除的配置项仍被持久化。**没有任何报错**。
+**现象**：修改了 `__init__.py` 并同步/Reload 后，日志显示旧代码仍在运行，已删除的 entry 仍然存在，已删除的配置项仍被持久化。**没有任何报错**。
 
-**原因**：Python 加载的是 `__pycache__/__init__.cpython-3xx.pyc` 缓存文件，而不是 `.py` 源文件。
+**原因**：Python 加载的是 `__pycache__/__init__.cpython-3xx.pyc` 缓存文件，而不是 `.py` 源文件（缓存校验被复制保留的时间戳欺骗时尤其常见）。
 
 **诊断**：
 ```
@@ -392,13 +392,15 @@ Plugin entries collected: ['...', 'clone_neko_voice', ...]  ← 这个 entry 源
 配置已持久化: ['cosyvoice_api_key', ...]  ← 这个配置项源码中已删除！
 ```
 
-**修复**：
+**修复（按顺序）**：
+1. 源码树/开发者模式先点 **Reload**；改了依赖或 manifest 再重启该插件。
+2. 手工同步场景确认源文件已真正覆盖。
+3. 以上无效，再删目标 `__pycache__/`（诊断分支）：
 ```powershell
-# 删除 __pycache__ 目录
-Remove-Item -Path "部署目录\__pycache__" -Recurse -Force
+Remove-Item -Path "运行目录\__pycache__" -Recurse -Force
 ```
 
-**预防**：每次修改 Python 文件后，同步脚本必须包含 `__pycache__` 清理步骤。
+**预防**：同步时排除 `__pycache__/`、`*.pyc`，日常优先用官方 Reload。
 
 ---
 
@@ -707,27 +709,27 @@ def _on_check(self, **_):
 
 ---
 
-### 39. Bus 查询多次 reload 浪费带宽 ⭐ 新增
+### 39. Bus 使用已移除的旧接口 ⭐ 更新
 
-> 详见 [31-bus-system-internals.md](31-bus-system-internals.md) §7
+> 详见 [31-bus-system-internals.md](31-bus-system-internals.md) §2 / §7
 
-**现象**：插件响应慢，ZMQ 往返次数多。
+**现象**：调用 `get_recent()` / `reload()` / `union()/intersect()/difference()` 报错或返回空。
 
-**原因**：每次调用 `.reload(ctx)` 都触发一次 ZMQ RPC 往返。
+**原因**：这些接口在 v0.9 已移除；Bus 是只读门面，查询改为可重放链。
 
-**修复**：使用惰性链式调用 `.filter().limit()` 一次性构建查询计划，只触发一次重放。
+**修复**：`await bus.messages.get(max_count=N)` → `.filter(field=value)` → `.sort(by=..., reverse=...)` → `.limit(n)`。
 
 ---
 
-### 40. 忘记 await BusList 导致空结果 ⭐ 新增
+### 40. Bus 过滤条件位置错误导致 watch 失效 ⭐ 更新
 
-> 详见 [31-bus-system-internals.md](31-bus-system-internals.md) §8
+> 详见 [31-bus-system-internals.md](31-bus-system-internals.md) §3
 
-**现象**：`BusList` 迭代返回空或报错。
+**现象**：`watch()` 不按预期触发，或过滤后拿不到数据。
 
-**原因**：`BusList` 是惰性的，需要显式 `await plan.reload(ctx)` 或触发 `_ensure_materialized()`。
+**原因**：`filter(callable)` 只作用于本地快照，**不能**放在 `watch()` 之前；watch 前的过滤必须用结构化 `filter(field=value)`。
 
-**修复**：要么 `await plan.reload(ctx)`，要么在迭代前确保 `_ctx` 已设置。
+**修复**：watch 前改用结构化 `filter(field=value)`；并确认该总线支持 `watch`（仅 messages/events/lifecycle）。
 
 ---
 
@@ -802,8 +804,8 @@ def _on_check(self, **_):
 5. ☐ 有 `executemany` 调用吗？
 6. ☐ 有 `keywords=` 参数吗？
 7. ☐ `plugin.toml` 中 `database.enabled = true` 吗？
-8. ☐ 文件同步到部署目录了吗？**部署目录的 `__pycache__` 删了吗？** ⭐
-9. ☐ 重启 N.E.K.O 了吗？
+8. ☐ 源码树/开发者模式下点 **Reload** 了吗（改依赖需重启该插件）？ ⭐
+9. ☐ 手工同步场景：源文件覆盖了吗？行为仍不更新才删目标 `__pycache__/`？ ⭐
 10. ☐ 路径匹配用了 `rstrip(os.sep)` 吗？
 11. ☐ `useLocalState` 的 key 在整个插件范围内唯一吗？
 12. ☐ `@timer_interval` 用了 `def`（非 `async def`）吗？
@@ -824,8 +826,8 @@ def _on_check(self, **_):
 27. ☐ `on_init` 中调用了其他插件吗？ ⭐
 28. ☐ 推送大文件用了 URL 而非 base64 吗？ ⭐
 29. ☐ 多个 Router 都设置了不同 prefix 吗？ ⭐
-30. ☐ Bus 查询用了惰性链式而非多次 reload 吗？ ⭐
-31. ☐ BusList 迭代前已 await reload 或设置了 _ctx 吗？ ⭐
+30. ☐ Bus 查询用了可重放链 `get().filter(field=value).sort(by=).limit()` 吗？ ⭐
+31. ☐ Bus 查询用了 `get().filter(field=value).sort(by=).limit()`，且 watch 前只用结构化 filter 吗？ ⭐
 32. ☐ 用了 loguru 而非 self.logger 吗？ ⭐
 33. ☐ store 中存储了大量数据吗？ ⭐
 34. ☐ 所有 i18n 语言文件的 key 完全一致吗？ ⭐

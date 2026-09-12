@@ -4,13 +4,14 @@
 
 ```toml
 [plugin]
-id = "your_plugin_id"                    # 唯一标识符，必须与目录名一致
+id = "your_plugin_id"                    # 唯一标识符，建议与源码目录名一致（打包/生产安装要求对齐）
 name = "插件中文名"                       # 显示名称
 description = "插件功能描述（给用户看）"     # 长描述
 short_description = "简短描述（给 AI 看）"   # 短描述，AI 用来匹配用户意图
 keywords = ["关键词1", "关键词2", ...]      # AI 匹配关键词，中英文都写
 version = "0.1.0"
-entry = "plugin.plugins.插件目录名:PluginClassName"  # 必须与目录名完全一致！（官方格式带 plugin. 前缀）
+type = "plugin"                          # 普通插件；可省略（默认值）
+entry = "plugin.plugins.目录名:PluginClassName"  # module.path:ClassName，且必须是 NekoPluginBase 子类
 
 [plugin.author]
 name = "作者名"
@@ -22,6 +23,7 @@ supported = ">=0.1.0,<0.3.0"
 [plugin_runtime]
 enabled = true       # 是否启用
 auto_start = true    # 是否随 N.E.K.O 自动启动
+timeout = 10         # 启动就绪秒数，须 0 < timeout <= 300
 
 [plugin.store]
 enabled = true       # 是否启用持久化存储
@@ -64,13 +66,15 @@ permissions = ["state:read"]
 
 ## 关键注意事项
 
-### 1. entry 路径必须与目录名一致
+### 1. entry 包名建议与目录名一致
 
 ```toml
 # 假设目录名是 my_plugin，类名是 MyPlugin
-entry = "plugin.plugins.my_plugin:MyPlugin"   # ✅ 正确（官方格式）
-entry = "plugin.plugins.MyPlugin:MyPlugin"    # ❌ 大小写不匹配 → PluginEntryDirectoryMismatch
+entry = "plugin.plugins.my_plugin:MyPlugin"   # ✅ 官方推荐：目录名 = plugin.id = entry 包名
+entry = "plugin.plugins.MyPlugin:MyPlugin"    # ⚠️ 大小写不一致；开发期旧发现机制可能容忍，但打包/生产安装会失败
 ```
+
+`[plugin].entry` 必须是 `module.path:ClassName`，且解析到的类必须是 `NekoPluginBase` 子类（`PluginRouter` 不能直接作为入口）。
 
 ### 2. short_description 和 keywords 是 AI 匹配的关键
 
@@ -103,7 +107,9 @@ enable_file_ops = false
 api_key = ""
 ```
 
-**注意**：依赖 `plugin.store` 时，配置项会被持久化。修改 `plugin.toml` 后必须同步到部署目录。
+> 段名需与代码读取配置时的键一致：官方允许**自定义顶层节名**（如 `[settings]` 或 `[my_plugin]`），只要 `plugin.toml` 与代码（`self.config.dump()["<段名>"]`）一致即可。真实密钥不要写进源码，放用户运行时配置（见 [43-security-hardening.md](43-security-hardening.md) §2）。
+
+**注意**：依赖 `plugin.store` 时，配置项会被持久化。修改 `plugin.toml` 后：源码树/开发者模式点 **Reload**（改了依赖/结构需重启该插件）；手工同步场景再覆盖文件（见 [06-deployment.md](06-deployment.md)）。
 
 ### 4. 权限声明
 
