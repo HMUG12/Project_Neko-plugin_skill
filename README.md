@@ -1,9 +1,9 @@
-# N.E.K.O 插件开发 Skill · neko-plugin-dev(4.1.0)
+# N.E.K.O 插件开发 Skill · neko-plugin-dev(4.1.0plus)
 <img width="1024" height="1024" alt="20260912123440-c080be1e-2be8996c" src="https://github.com/user-attachments/assets/399b3757-1632-4c1c-b20d-1aac1c84430b" />
 
 
 
-> 一套面向 [N.E.K.O](https://github.com) 插件开发的 Skill 辅助，由 Agent 辅助，从搭建到避坑上线，全流程覆盖。
+> 一套面向 [N.E.K.O](https://github.com) 插件开发的 Skill 辅助，由 Agent 辅助，从搭建到避坑上线，全流程覆盖，推荐使用最新技能哦。
 
 [![Version](https://img.shields.io/badge/version-neko--plugin--dev(4.1.0)-blueviolet.svg)](CHANGELOG)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -52,14 +52,7 @@
 - 排查 `N.E.K.O` 主程序层面的疑难问题（ZMQ 通信、Bus 总线、生命周期、配置漂移）
 - 错误处理、并发竞态、跨插件通信、消息积压管理、WebSocket 重连
 
-## 版本
 
-| 版本 | 插件案例 | 主题数 | 铁律 | 陷阱数 | 主要更新 |
-|------|---------|--------|------|--------|---------|
-| V1.00 | file\_manager | 12 | 10 | 17 | 初版：基础架构 + 权限 + 撤销 + 日志 |
-| V1.01 | file\_manager + ai\_singer | 15 | 10 | 21 | +云端 API +多面板 +富 UI 组件 |
-| **neko-plugin-dev(4.1.0)**（当前）| + 13 外部开源 skill 融合 + 本地 plugins/ 逆向 + **插件市场 31 插件源码逆向** + examples 示例插件 + **可选工作流 00**（用户「AI 开发协作协调器」skill 融合，大型新插件按需启用） | **51** | **20** | **45** | +39 官方指南 +40–50 融合/逆向篇（工程纪律/YAGNI/反 AI 味/网页集成/安全/本地逆向/记忆/LLM路由/压缩脱敏/陪伴状态机/**市场 31 插件逆向**）+ examples 示例插件（**尚未跑通端到端验证**） |
-| V2.0 | + music\_pusher + qq\_auto\_reply + **N.E.K.O-main 逆向** | 38 | 20 | 45 | +Router +@llm\_tool +Static UI +外部协议 +错误/并发模式 +主程序 10 篇内部机制 |
 
 ## 仓库结构
 
@@ -182,157 +175,6 @@ AI 会自动识别并加载 `neko-plugin-dev` 技能，后续对话都会按规�
 ```
 plugin.toml  →  __init__.py  →  ui/  →  i18n/  →  docs/  →  测试  →  部署
 ```
-
-详细步骤见 [`neko-plugin-dev(4.1.0)/references/README.md`](neko-plugin-dev(4.1.0)/references/README.md) 的「从零搭建」章节。
-
-***
-
-## 核心铁律（务必先看）
-
-> 完整版在 [`SKILL.md`](neko-plugin-dev(4.1.0)/SKILL.md)，这里只列最致命的 20 条。
-
-### 基础 10 条（V1.00 起）
-
-1. **文件名全小写 + 下划线** — 目录名与 `plugin.toml` 的 `entry` 包名一致（强烈建议；不一致仍可能加载，但打包/工具链会出错）
-2. **Python 文件无 BOM** — `UTF-8 without BOM`，否则 `SyntaxError`
-3. **上下文用 `self.ctx`** — 框架**不会**给 `@plugin_entry`/`@ui.action`/`@lifecycle` 传入任何 `ctx` 参数（真实插件代码 0 处使用 `_ctx=None`）；需要运行时上下文用 `self.ctx` 属性，不要给方法加 `_ctx=None` 参数
-4. **`**_` 可选 catch-all** — `@lifecycle`/`@plugin_entry`/`@ui.action` 想兼容框架未来可能传入的额外关键字可加 `**_`，官方示例普遍使用但**非强制**；Best Practice 建议「仅在有意消费额外参数时」才加
-5. **启动默认 < 10 秒（可配）** — `plugin.toml` 的 `[plugin_runtime].timeout` 在 `0 < timeout <= 300` 范围可调；耗时操作仍建议丢 `asyncio.create_task()` 后台执行
-6. **无 `executemany`** — 数据库批量操作必须逐行 `await session.execute()`
-7. **优先用官方开发模式 Reload** — 官方推荐在源码目录（`plugin/plugins/`）或用开发者模式 Load unpacked 就地开发，改完点插件详情页 **Reload** 即可生效，日常无需反复复制；仅在手改源码/已安装包或行为不更新时，才删目标目录 `__pycache__/` 作为**诊断分支**（详见 06 与 17）
-8. **权限默认 `false`** — 安全优先：总开关 + 逐操作授权
-9. **AI 需要绝对路径** — 拒绝非绝对路径，错误消息引导 AI 先搜索
-10. **磁盘 I/O 用 `asyncio.to_thread`** — 不阻塞事件循环
-
-### V2.0 新增 10 条
-
-11. **`plugin.toml` dependencies 用内联表** — `openai = ">=1.0.0"` 而非列表格式
-12. **双装饰器：`@ui.action` 在上，`@plugin_entry` 在下**（官方示例顺序，**本机未运行验证**）— 叠加时 `@ui.action(label=..., tone=..., refresh_context=True)` 在外、`@plugin_entry` 在内；最终以你目标 SDK 的官方示例为准，升级 SDK 后重测
-13. **`@llm_tool` 用 `*,`** — 强制 keyword-only，避免位置参数错误
-14. **Router 在 `__init__` 中注册** — `include_router` 必须在 `super().__init__` 之后
-15. **第三方库惰性导入 + 错误缓存** — `ImportError` 后缓存失败，不重复重试
-16. **跨插件用** **`call_entry`** — 不直接 import 其他插件类
-17. **`on_init` 不调其他插件** — 跨插件调用放在 `on_start` 中
-18. **`push_message` 大文件用 URL** — 大文件 base64 体积膨胀 33%
-19. **Router entry 设 prefix** — 多 Router 用 prefix 避免 ID 冲突
-20. **Bus 查询用官方可重放链** — `get(...).filter(field=value).sort(by=...).limit()`；旧 `get_recent()` / `reload()` / `union()/intersect()/difference()` 已移除
-
-***
-
-## 文档导航
-
-### 基础篇（01–04 必读；00 可选）
-
-| #  | 文档                                                                       | 何时打开      |
-| -- | ------------------------------------------------------------------------ | --------- |
-| 00 | [开发协作协调器](neko-plugin-dev(4.1.0)/references/00-development-coordinator.md) | **可选工作流（非必读）**：五阶段 + 最小状态持久化，适合需求复杂的大型新插件 | 用户明确说「启动开发协作 / 用结对编程模式」，或插件规模大、需求含糊时 |
-| 01 | [plugin.toml 配置](neko-plugin-dev(4.1.0)/references/01-plugin-toml.md)     | 新建插件、加配置项 |
-| 02 | [Python 后端](neko-plugin-dev(4.1.0)/references/02-python-plugin.md)        | 写核心逻辑     |
-| 03 | [UI 设置面板](neko-plugin-dev(4.1.0)/references/03-ui-settings.md)          | 做设置界面     |
-| 04 | [i18n 国际化](neko-plugin-dev(4.1.0)/references/04-i18n.md)                | 支持多语言     |
-
-### 进阶篇（推荐）
-
-| #  | 文档                                                                       | 何时打开                              |
-| -- | ------------------------------------------------------------------------ | --------------------------------- |
-| 08 | [AI 友好设计](neko-plugin-dev(4.1.0)/references/08-ai-friendly-design.md)   | **每次写** **`@plugin_entry`** **前** |
-| 09 | [权限体系](neko-plugin-dev(4.1.0)/references/09-permission-system.md)       | 涉及读/写/删等危险操作                      |
-| 10 | [性能优化](neko-plugin-dev(4.1.0)/references/10-performance.md)             | 处理大量数据                            |
-| 11 | [撤销与日志](neko-plugin-dev(4.1.0)/references/11-undo-and-logging.md)       | 需要可撤销操作                           |
-| 12 | [上线前总清单](neko-plugin-dev(4.1.0)/references/12-master-checklist.md)     | **每次发版前必看**                       |
-
-### 工程篇（流程）
-
-| #  | 文档                                                                  | 何时打开        |
-| -- | ------------------------------------------------------------------- | ----------- |
-| 05 | [单元测试](neko-plugin-dev(4.1.0)/references/05-testing.md)            | 开发完成时       |
-| 06 | [运行与部署](neko-plugin-dev(4.1.0)/references/06-deployment.md)       | 改完不生效 / 交付时 |
-| 07 | [踩坑大全](neko-plugin-dev(4.1.0)/references/07-gotchas.md)            | 遇到 bug 时    |
-
-### 实战篇·一（V1.01 · 基于 `ai_singer`）
-
-| #  | 文档                                                                          | 何时打开                |
-| -- | --------------------------------------------------------------------------- | ------------------- |
-| 13 | [云端 API 集成](neko-plugin-dev(4.1.0)/references/13-cloud-api-integration.md) | 对接云服务/第三方 API      |
-| 14 | [多面板架构](neko-plugin-dev(4.1.0)/references/14-multi-panel-architecture.md) | 功能复杂需要多面板/标签页      |
-| 15 | [富交互 UI](neko-plugin-dev(4.1.0)/references/15-rich-ui-components.md)       | 自定义组件、歌词同步、ActionForm |
-
-### 实战篇·二（V2.0 · `ai_singer` V0.6 重构经验）
-
-| #  | 文档                                                                          | 何时打开           |
-| -- | --------------------------------------------------------------------------- | -------------- |
-| 16 | [后端精简与迁移](neko-plugin-dev(4.1.0)/references/16-backend-simplification.md) | 重构/移除旧后端      |
-| 17 | [pyc 缓存陷阱](neko-plugin-dev(4.1.0)/references/17-pyc-cache-trap.md)          | 部署后行为不变时      |
-| 18 | [流式输出](neko-plugin-dev(4.1.0)/references/18-streaming-output.md)           | 需要逐条输出进度      |
-| 19 | [LLM 工作流设计](neko-plugin-dev(4.1.0)/references/19-llm-workflow-design.md)   | 设计 AI 调用流程    |
-
-### 实战篇·三（V2.0 · 原指南 + 第三方插件分析）
-
-| #  | 文档                                                                                  | 何时打开                  |
-| -- | ----------------------------------------------------------------------------------- | --------------------- |
-| 20 | [PluginRouter 拆分](neko-plugin-dev(4.1.0)/references/20-plugin-router.md)               | 插件超 300 行/5+ 入口       |
-| 21 | [@llm_tool 注册](neko-plugin-dev(4.1.0)/references/21-llm-tool-registration.md)        | 让 LLM 自动调用插件          |
-| 22 | [纯前端插件](neko-plugin-dev(4.1.0)/references/22-static-ui-plugin.md)                  | 3D/可视化/富媒体插件         |
-| 23 | [外部协议集成](neko-plugin-dev(4.1.0)/references/23-external-protocol-integration.md)   | OneBot/NapCat/QQ 等外部协议 |
-
-### 实战篇·四（V2.0 · 三插件深度逆向）
-
-| #  | 文档                                                                                | 何时打开                  |
-| -- | --------------------------------------------------------------------------------- | --------------------- |
-| 24 | [错误处理模式](neko-plugin-dev(4.1.0)/references/24-error-handling-patterns.md)     | 写任何涉及错误的代码            |
-| 25 | [并发与竞态](neko-plugin-dev(4.1.0)/references/25-concurrency-race-conditions.md)    | 多入口/定时器/外部协议          |
-| 26 | [Backend 设计](neko-plugin-dev(4.1.0)/references/26-backend-design-pattern.md)      | 对接外部 API/服务           |
-| 27 | [音频处理管线](neko-plugin-dev(4.1.0)/references/27-audio-processing-pipeline.md)    | 处理音频/多媒体              |
-| 28 | [插件间通信](neko-plugin-dev(4.1.0)/references/28-inter-plugin-communication.md)     | 多插件协作联动               |
-
-### 实战篇·五（V2.0 · 主程序逆向 — 框架层）
-
-| #  | 文档                                                                                      | 何时打开              |
-| -- | --------------------------------------------------------------------------------------- | ----------------- |
-| 29 | [生命周期内部机制](neko-plugin-dev(4.1.0)/references/29-plugin-lifecycle-internals.md)       | 排查启动/停止 bug       |
-| 30 | [Push Message 深度解析](neko-plugin-dev(4.1.0)/references/30-push-message-internals.md)     | 推送任何消息           |
-| 31 | [Bus 总线系统](neko-plugin-dev(4.1.0)/references/31-bus-system-internals.md)                | 查询消息/事件/记忆        |
-| 32 | [NekoPluginBase 内部](neko-plugin-dev(4.1.0)/references/32-nekopluginbase-internals.md)      | 深入理解插件基类          |
-| 33 | [PluginRouter Entry 系统](neko-plugin-dev(4.1.0)/references/33-pluginrouter-entry-internals.md) | 设计多模块插件          |
-
-### 实战篇·六（V2.0 · 主程序逆向 — 基础设施层）⭐ 新增
-
-| #  | 文档                                                                                  | 何时打开              |
-| -- | ----------------------------------------------------------------------------------- | ----------------- |
-| 34 | [Logger 日志系统](neko-plugin-dev(4.1.0)/references/34-logger-system-internals.md)     | 排查日志不落地/格式问题    |
-| 35 | [Store 与 Database](neko-plugin-dev(4.1.0)/references/35-store-database-internals.md)  | 选择数据存储方案        |
-| 36 | [i18n 引擎](neko-plugin-dev(4.1.0)/references/36-i18n-internals.md)                    | 实现多语言支持          |
-| 37 | [ZMQ 传输协议](neko-plugin-dev(4.1.0)/references/37-zmq-transport-internals.md)         | 理解跨进程通信          |
-| 38 | [配置系统](neko-plugin-dev(4.1.0)/references/38-config-system-internals.md)             | 管理插件配置项         |
-
-### 官方指南篇（1 篇）
-
-| #  | 文档                                                                                  | 何时打开              |
-| -- | ----------------------------------------------------------------------------------- | ----------------- |
-| 39 | [官方插件开发指南](neko-plugin-dev(4.1.0)/references/39-official-plugin-dev-guide.md)     | 复习官方推荐写法        |
-
-### 融合外部最佳实践（10 篇）⭐ neko-plugin-dev(4.1.0) 新增
-
-| #  | 文档                                                                                  | 何时打开              |
-| -- | ----------------------------------------------------------------------------------- | ----------------- |
-| 40 | [工程纪律 + YAGNI](neko-plugin-dev(4.1.0)/references/40-engineering-discipline.md)      | 项目初期定架构/控制范围    |
-| 41 | [反 AI 味 UI](neko-plugin-dev(4.1.0)/references/41-ui-design-quality.md)               | 追求高级 UI 质感        |
-| 42 | [网页数据集成](neko-plugin-dev(4.1.0)/references/42-web-data-integration.md)            | 爬取/解析网页数据        |
-| 43 | [安全加固](neko-plugin-dev(4.1.0)/references/43-security-hardening.md)                | 处理敏感输入/输出        |
-| 44 | [本地插件架构逆向](neko-plugin-dev(4.1.0)/references/44-local-plugin-architecture.md)     | 学习本地 plugins/ 写法  |
-| 45 | [融合速查](neko-plugin-dev(4.1.0)/references/45-fusion-quick-reference.md)            | 快速回顾融合精髓 F1–F9   |
-| 46 | [持久记忆](neko-plugin-dev(4.1.0)/references/46-memory-persistence-subconscious.md)     | 跨会话记忆/学习        |
-| 47 | [LLM 路由与成本](neko-plugin-dev(4.1.0)/references/47-llm-routing-cost-optimization.md) | 降 token/路由选择     |
-| 48 | [提示词压缩与脱敏](neko-plugin-dev(4.1.0)/references/48-prompt-compression-pii-redaction.md) | 外发 LLM 前压缩/脱敏   |
-| 49 | [角色陪伴型状态机](neko-plugin-dev(4.1.0)/references/49-neko-companion-state-machine.md) | 做陪伴/角色扮演 persona |
-
-### 实战篇·七（1 篇 · 插件市场 31 插件逆向）⭐ 新增
-
-| #  | 文档                                                                                  | 何时打开              |
-| -- | ----------------------------------------------------------------------------------- | ----------------- |
-| 50 | [市场插件逆向工程](neko-plugin-dev(4.1.0)/references/50-market-plugin-reverse-engineering.md) | 写复杂插件前先抄真实市场骨架 |
-
-***
 
 ## 典型使用场景
 
@@ -516,9 +358,12 @@ uv run python launcher.py                           # 启动源码版 N.E.K.O �
 - 新增设计模式 → 补到对应 references 文档
 - 文档勘误 → 直接提 PR
 
+
+## 贡献
+感谢星辰大佬对错误的指正
 ## 协议
 
-[MIT License](LICENSE) © 2026 Noda-Core 工作室 × 未知之致
+[MIT License](LICENSE) © 2026  未知之致
 
 ***
 
