@@ -11,6 +11,8 @@
 | 回滚 | 用工作区根目录的 `Project_Neko-plugin_skill-main.zip` 还原；同步目录无 `.git` |
 | 事实基准 | 本地 `N.E.K.O-main (1)/N.E.K.O-main` 的 `plugin/` 源码、`docs/plugins/`、`.agent/skills/neko-plugin/` |
 | 核对原则 | **逐条以源码为准，不盲从审查报告**。报告里与源码不符的条目见 §6，一律未采纳 |
+| 上游推送 | 2026-11-15 单 commit `11b2bdef8a4918ee61de5401a755fc6ac10f0eb5` 推到 `main`；Git Data API 一次提交 132 个 tree 条目（71 新增/更新 + 61 删除），远端 71 个文件与本地逐条 blob hash 一致 |
+| 本地工作副本 | `Project_Neko-plugin_skill/` 已 `git init` 并跟踪 `origin/main`；`http.version=HTTP/1.1` 解决本地代理下 git 的 HTTP/2 握手失败（**无需**关闭 TLS 校验），`core.autocrlf=input` |
 
 ## 1. A 类 · 严重且确定
 
@@ -95,5 +97,5 @@
 1. 在真实 SDK 上跑一次 `uv run neko-plugin check minimal_plugin --strict`，把输出记进 CHANGELOG。
 2. 实际加载示例、调用入口、打开设置面板保存、执行 Reload，补端到端验证记录。
 3. 若上游 N.E.K.O 主仓库有更新，重新核对 `decorators.py`、`context.py`、`zmq_transport.py`、`schema.py` 与 CLI 注册清单，再更新本表「事实基准」版本。
-4. 本仓库快照无 `.git`；如需回推上游，需先解决 `git` 走代理的 TLS 握手问题或用 GitHub API 提交。
+4. 本次修复沿用版本号 `4.1.1` 但未打新 tag；如需在 Release 页可见，补一个 `v4.1.1-fix` 或 `v4.1.2` 标签。（原「无法回推上游」问题已解决，见 §0）
 5. `references/` 的 359 个 Python 代码块中有 100 个无法独立编译，均为「类方法摘录」「签名 `...` 占位」「函数签名原文」三类文档体裁，**不是事实错误也不是本次修复的回归**；已在 `references/README.md` 与 `SKILL.md` §11 加全局说明。若要整体改成可编译片段，属于独立的大规模文档重构。

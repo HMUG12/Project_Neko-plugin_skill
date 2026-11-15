@@ -33,6 +33,7 @@
 - 契约测试 `test_router_inherits_plugin_router` 改为只禁止真正的装饰器用法，注释里提及 `@llm_tool` 不再误报。
 - 静态终验：相对链接 0 失效、SKILL.md 360 行 / description 352 字符、4 个 py 与 3 个 toml 全通过、契约测试 7/7。逐条结果见 `REVIEW_FIXES.md` §7。
 - 补「代码块是摘录片段」的全局说明（`references/README.md`、`SKILL.md` §11），避免把方法片段当成可独立运行的模块。
+- 已推送上游：单 commit `11b2bde` 更新 `main`，一次完成目录改名与旧示例删除；远端 71 个文件与本地逐条校验一致。本地已初始化 git 工作副本并跟踪 `origin/main`，`http.version=HTTP/1.1` 修复代理下的 git 握手失败。
 
 ### 仍待验证
 - 未在干净环境跑通 `init → check → Reload`；`42` 的 firecrawl API、`41` 的 `Input type="range"`、`50` 的 file:line 出处仍未核实，已在文档标注。
