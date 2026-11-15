@@ -1,0 +1,11 @@
+[project]
+name = "minimal-plugin"
+version = "0.1.0"
+description = "N.E.K.O minimal plugin example with no external dependencies"
+requires-python = ">=3.11"
+dependencies = []
+
+# 本示例没有第三方包，因此不需要 vendor/。
+# 若要加包：写进 [project].dependencies，再执行
+#   uv run neko-plugin sync minimal_plugin
+# 然后把 vendor/ 随包一起发布。

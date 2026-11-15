@@ -1,11 +1,11 @@
-# N.E.K.O 插件开发 Skill · neko-plugin-dev(4.1.0plus)
+# N.E.K.O 插件开发 Skill · neko-plugin-dev 4.1.1
 <img width="1024" height="1024" alt="20260912123440-c080be1e-2be8996c" src="https://github.com/user-attachments/assets/399b3757-1632-4c1c-b20d-1aac1c84430b" />
 
 
 
-> 一套面向 [N.E.K.O](https://github.com) 插件开发的 Skill 辅助，由 Agent 辅助，从搭建到避坑上线，全流程覆盖，推荐使用最新技能哦。
+> 一套面向 [N.E.K.O](https://project-neko.online) 插件开发的 Skill 辅助，由 Agent 辅助，从搭建到避坑上线，全流程覆盖，推荐使用最新技能哦。
 
-[![Version](https://img.shields.io/badge/version-neko--plugin--dev(4.1.0)-blueviolet.svg)](CHANGELOG)
+[![Version](https://img.shields.io/badge/version-4.1.1-blueviolet.svg)](CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![N.E.K.O SDK](https://img.shields.io/badge/N.E.K.O_SDK-0.1.x-blue.svg)]()
 [![Python](https://img.shields.io/badge/Python-3.11%2B-blue.svg)]()
@@ -43,7 +43,7 @@
 ## 能帮你做什么
 
 - 搭建一个可运行的 N.E.K.O 插件示例（5 分钟快速起步）
-- 写出符合 SDK 规范的 Python 后端（双装饰器、`@llm_tool`、`PluginRouter`、`report_status`、`data_path`）、TSX 前端（`Slider`/`Select`/`StatusBadge`/`ActionForm`/`api.call`）、i18n 翻译
+- 写出符合 SDK 规范的 Python 后端（双装饰器、`@llm_tool`、`PluginRouter`、`report_status`、`data_path`）、TSX 前端（`Input`/`Select`/`StatCard`/`ActionButton`/`api.call`；官方组件库无 `Slider`）、i18n 翻译
 - 给 `@plugin_entry` / `@llm_tool` 设计「AI 友好」的 description 和错误消息
 - 排查 **45 个**已知致命陷阱（BOM、目录大小写、`executemany`、启动超时、`__pycache__` 缓存、…）
 - 对接云端 API（阿里云百炼、OpenAI 等）— 第三方 SDK 惰性导入 + 错误缓存、健康检查
@@ -61,10 +61,13 @@ Project_Neko-plugin_skill/
 ├── README.md                              ← 你正在看的文件
 ├── CHANGELOG.md                           ← 版本变更日志
 ├── LICENSE                                ← MIT 协议
-└── neko-plugin-dev(4.1.0)/                 ← neko-plugin-dev(4.1.0) 技能包本体
+├── OTHER.md                               ← 投稿前准备（官方 CLI 流程）
+├── n.e.k.o_plugin_example/README.md       ← 市场仓库命名示例说明
+├── REVIEW_FIXES.md                        ← 深审问题修复对照表
+└── neko-plugin-dev/                        ← 技能包本体（目录名与 SKILL.md 的 name 一致）
     ├── SKILL.md                           ← 技能入口（TRAE 加载这个文件）
     ├── examples/                          ← 示例插件（尚未跑通端到端验证，见 examples/README.md）⭐
-    │   └── web_assistant/                 ← plugin.toml + __init__.py + routers/ + ui/ + config.example.toml + .gitignore
+    │   └── minimal_plugin/                 ← 零第三方依赖的最小示例：plugin.toml + pyproject.toml + __init__.py + routers/ + ui/ + tests/
     └── references/                        ← 51 篇专题参考文档（含 00 可选工作流 + 39 官方指南 + 40–50 融合/逆向篇）
         │
         │ ── 可选篇（1 篇 · 大型新插件按需启用）── ⭐
@@ -129,7 +132,7 @@ Project_Neko-plugin_skill/
         │ ── 官方指南篇（1 篇）──
         ├── 39-official-plugin-dev-guide.md
         │
-        │ ── 融合外部最佳实践（10 篇）── ⭐ neko-plugin-dev(4.1.0) 新增
+        │ ── 融合外部最佳实践（10 篇）── ⭐ neko-plugin-dev 新增
         ├── 40-engineering-discipline.md        ← 工程纪律 + YAGNI
         ├── 41-ui-design-quality.md             ← 反 AI 味 UI
         ├── 42-web-data-integration.md          ← firecrawl 网页集成
@@ -151,16 +154,16 @@ Project_Neko-plugin_skill/
 
 ### 1. 在 TRAE 中安装本技能
 
-把整个 `neko-plugin-dev(4.1.0)/` 文件夹复制到你的 TRAE 技能目录：
+把整个 `neko-plugin-dev/` 文件夹复制到你的 TRAE 技能目录：
 
 ```powershell
 # Windows: 复制到 TRAE 全局技能目录
-Copy-Item -Path ".\neko-plugin-dev(4.1.0)" -Destination "$env:USERPROFILE\.trae\skills\neko-plugin-dev" -Recurse -Force
+Copy-Item -Path ".\neko-plugin-dev" -Destination "$env:USERPROFILE\.trae\skills\neko-plugin-dev" -Recurse -Force
 ```
 
 > 💡 复制到 TRAE 时建议去掉 `(4.1.0)` 后缀，避免路径中的特殊字符（括号与英文句点）；重命名后不影响技能加载。
 
-或直接在 TRAE 的「技能管理」里点「从本地文件夹导入」，选择 `neko-plugin-dev(4.1.0)` 文件夹即可。
+或直接在 TRAE 的「技能管理」里点「从本地文件夹导入」，选择 `neko-plugin-dev` 文件夹即可。
 
 ### 2. 让 AI 加载技能
 
@@ -263,11 +266,15 @@ uv run python launcher.py                           # 启动源码版 N.E.K.O �
 >
 > 用户运行时配置位于用户数据目录（Windows 为 `%LOCALAPPDATA%\N.E.K.O\plugins\<id>\config\plugin.toml`），**不要**把密钥写进源码 manifest 并提交。
 
-详见 [06-deployment.md](neko-plugin-dev(4.1.0)/references/06-deployment.md) 和 [17-pyc-cache-trap.md](neko-plugin-dev(4.1.0)/references/17-pyc-cache-trap.md)。
+详见 [06-deployment.md](neko-plugin-dev/references/06-deployment.md) 和 [17-pyc-cache-trap.md](neko-plugin-dev/references/17-pyc-cache-trap.md)。
 
 ***
 
-## neko-plugin-dev(4.1.0) 更新日志
+## 4.1.1 修订说明
+
+> 本版本依据 N.E.K.O 主程序源码与 `docs/plugins/` 重写事实层：修正依赖声明、定时器、生命周期、ZMQ、push_message、UI action 六类致命错误，重建示例插件，统一版本与编号，并补齐官方 CLI 流程。详见 `REVIEW_FIXES.md` 与 `CHANGELOG.md`。
+
+## 历史更新日志
 
 > 在 V2.0 基础上的「融合增强版」，主题 38 → 51。
 
@@ -285,7 +292,7 @@ uv run python launcher.py                           # 启动源码版 N.E.K.O �
 
 ### 新增 examples/ 示例插件（尚未跑通端到端验证）
 
-- 融合 40–45 的示例插件骨架，可扩展 46–50，演示最佳实践落地；上手前先 `uv run neko-plugin check web_assistant --strict` 并在目标 SDK 上加载验证
+- 零第三方依赖的最小插件骨架 `examples/minimal_plugin/`；上手前先 `uv run neko-plugin check minimal_plugin --strict` 并在目标 SDK 上加载验证（42 号 firecrawl 抓取仅作方法论参考）
 
 ### 文档导航 & 结构
 
@@ -308,7 +315,7 @@ uv run python launcher.py                           # 启动源码版 N.E.K.O �
 
 新增 10 条（详见上方「核心铁律」V2.0 段）：
 - 11–14：装饰器/Router 顺序
-- 15–17：惰性导入、跨插件、on_init
+- 15–17：惰性导入、跨插件、启动期约束
 - 18–20：消息大文件、Router prefix、Bus 链式
 
 ### 陷阱库 21 → 45
@@ -333,7 +340,7 @@ uv run python launcher.py                           # 启动源码版 N.E.K.O �
 
 - 🆕 新增 3 篇实战篇（13/14/15），覆盖云端 API、多面板、富 UI 组件
 - 🆕 实战案例从单插件（`file_manager`）扩展到双插件（`file_manager` + `ai_singer`）
-- 🆕 SKILL.md description 更新：`report_status` / `data_path` / 双装饰器、`Slider` / `Select` / `StatusBadge` / `ActionForm` / `api.call`
+- 🆕 SKILL.md description 更新：`report_status` / `data_path` / 双装饰器、Hosted UI 组件表（当时误列 `Slider`，官方组件库无此组件，4.1.1 已修正）
 - 🆕 陷阱库从 17 扩到 21
 - 🆕 references 目录加入「实战篇」分类
 - 🆕 references/README.md 加入云 API / 多面板 / 自定义 UI 的交叉引用
@@ -345,7 +352,7 @@ uv run python launcher.py                           # 启动源码版 N.E.K.O �
 
 - [ ] **Markdown 本地链接**可解析（相对路径存在、锚点存在），无指向已删除文件。
 - [ ] **README 与 SKILL.md 的「铁律」逐条一致**（编号、措辞、方向不得相反）；references/README.md 同步。
-- [ ] **示例可加载性**：`examples/web_assistant/` 的 `plugin.toml` 有 `[[plugin.ui.panel]].entry` 且该文件存在、`title` 字段正确；依赖已声明。
+- [ ] **示例可加载性**：`examples/minimal_plugin/` 的面板 id / context 与 `@ui.context` 一致，保存动作叠加了 `@plugin_entry`，Router 继承了 `PluginRouter`，依赖通道正确。
 - [ ] **敏感字段检查**：全仓无真实 API Key/Token；示例配置只留空值或 `config.example.toml` 占位。
 - [ ] **运行记录**：至少记录一次在目标 SDK 上的 `neko-plugin check <id> --strict` 输出，以及加载/调用入口/打开 UI/Reload 的结果（通过 or 失败原因）。
 - [ ] **版本与日期**：更新首页「已验证目标版本」表的核对日期；`CHANGELOG.md` 路径与当前版本目录名一致。
@@ -354,7 +361,7 @@ uv run python launcher.py                           # 启动源码版 N.E.K.O �
 
 本技能基于实战持续迭代，欢迎提 Issue / PR：
 
-- 发现新陷阱 → 补到 [07-gotchas.md](neko-plugin-dev(4.1.0)/references/07-gotchas.md)
+- 发现新陷阱 → 补到 [07-gotchas.md](neko-plugin-dev/references/07-gotchas.md)
 - 新增设计模式 → 补到对应 references 文档
 - 文档勘误 → 直接提 PR
 

@@ -6,11 +6,15 @@
 # 默认忽略仓库根下所有文件与目录
 *
 
-# —— 保留技能包本体 neko-plugin-dev(4.1.0) ——
-!neko-plugin-dev(4.1.0)/
-!neko-plugin-dev(4.1.0)/**
+# —— 保留技能包本体 neko-plugin-dev ——
+!neko-plugin-dev/
+!neko-plugin-dev/**
 
 # —— 保留仓库说明文件 ——
+!OTHER.md
+!n.e.k.o_plugin_example/
+!n.e.k.o_plugin_example/**
+!REVIEW_FIXES.md
 !README.md
 !CHANGELOG.md
 !LICENSE

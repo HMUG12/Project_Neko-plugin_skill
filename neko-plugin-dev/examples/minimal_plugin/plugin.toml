@@ -1,0 +1,25 @@
+[plugin]
+id = "minimal_plugin"
+name = "最小插件示例"
+description = "演示 N.E.K.O 插件契约的最小可运行示例：生命周期、AI 入口、Router 子包、Hosted TSX 设置面板、store 持久化与异步定时器。零第三方依赖。"
+version = "0.1.0"
+entry = "plugin.plugins.minimal_plugin:MinimalPlugin"
+type = "plugin"
+keywords = ["^示例$", "^minimal"]
+
+# 插件间依赖写 dependencies = ["other_plugin_id"]；
+# 本示例无插件间依赖，也无 Python 第三方包（见 pyproject.toml）。
+
+[plugin_runtime]
+auto_start = true
+timeout = 10
+
+[plugin.store]
+enabled = true
+
+# 面板需要写配置时才声明 config:write（最小权限）
+[[plugin.ui.panel]]
+id = "settings"
+title = "设置"
+context = "settings"
+permissions = ["state:read", "config:read", "config:write", "action:call"]
