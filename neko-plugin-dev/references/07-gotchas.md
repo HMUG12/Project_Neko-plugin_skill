@@ -698,9 +698,9 @@ async def _on_check(self, **_):
 
 > 详见 [30-push-message-internals.md](30-push-message-internals.md)
 
-**现象**：`await ctx.push_message(...)` 抛 `TypeError`；或大文件把消息平面载荷撑满（默认上限 256 KiB，可由 `NEKO_MESSAGE_PLANE_PAYLOAD_MAX_BYTES` 调整）。
+**现象**：`await ctx.push_message(...)` 抛 `TypeError`；或大文件把消息平面载荷撑满（**旧快照** 256 KiB / **官方 main** 512 KiB，均可由 `NEKO_MESSAGE_PLANE_PAYLOAD_MAX_BYTES` 调整）。
 
-**原因**：`push_message` 是**同步**方法（`plugin/core/context.py:846` 返回 `None`，插件侧拿不到 `submitted` 类回执），对它 `await` 必然失败。旧参 `content=` / `binary_data=` 会触发 `DeprecationWarning`；`data` 会被转成 `binary_base64`，JSON 序列化还会再膨胀。审查报告提到的 `payload_too_large` 回执、512KiB 上限、`ctx.images.upload()` 在源码里都不存在。
+**原因**：`push_message` 是**同步**方法，对它 `await` 必然失败。旧参 `content=` / `binary_data=` 会触发 `DeprecationWarning`；`data` 会被转成 `binary_base64`，JSON 序列化还会再膨胀。**版本代差**：旧快照返回 `None` / 256 KiB；官方 main 返回 `PushMessageResult`（`submitted` / `reason=payload_too_large`）/ 512 KiB，并提供 `await ctx.images.upload()` 处理大图（源 32 MiB、归一化 8 MiB 上限）。早期审查报告提到这些是**针对新版**说的，不是误判；详见 `30` 篇 §0、`51` 篇与 `REVIEW_FIXES.md §9`。
 
 **修复**：
 ```python

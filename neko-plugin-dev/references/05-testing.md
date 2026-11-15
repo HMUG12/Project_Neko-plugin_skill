@@ -1,5 +1,7 @@
 # 单元测试指南
 
+> **本篇讲「怎么写插件单元测试」（Mock SDK 模板）**。**官方 CLI 的验证分层、CI 门禁与发布前校验**请以 [`51-build-publish-and-market-review.md`](51-build-publish-and-market-review.md) §3 为准（官方 main `acfbdbc`，2026-11-15）：`check` → `check -s` → `check -r`（含插件本地 `tests/`、构建、payload hash）→ `check -r --market-release` → `lint`（pinned ruff 0.12.4）→ `precheck`（lint → sync --clean → check -r）→ 插件仓库 `verify.yml`。`check` 通过不等于运行通过，其盲点见 `51` §3.1。
+
 ## 核心挑战
 
 N.E.K.O 插件依赖 `plugin.sdk.plugin` 模块，该模块只在 N.E.K.O 运行时存在。测试时**必须 Mock 整个 SDK 模块**。

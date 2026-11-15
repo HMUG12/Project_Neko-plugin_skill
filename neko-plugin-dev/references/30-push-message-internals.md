@@ -1,10 +1,18 @@
-# 30 — Push Message（按官方源码重写）
+# 30 — Push Message（旧快照基线；新版差异见 §0）
 
-> **依据**：`plugin/sdk/shared/core/context.py:390`（SDK 侧签名）、`plugin/core/context.py:846`（宿主侧签名，返回 `None`）、`plugin/core/context.py:1272`（`push_message_async`）、`plugin/sdk/shared/core/push_message_schema.py`（parts 形状与 v1→v2 翻译）、`plugin/settings.py:447`（载荷上限常量）、`docs/changelog/plugin-push-message-v2.md`。
+> ## 0. 版本代差（先读）
+> 本篇依据**工作区本地旧快照** `N.E.K.O-main (1)`：`plugin/sdk/shared/core/context.py:390`、`plugin/core/context.py:846`（`-> None`）、`plugin/core/context.py:1272`（`push_message_async`）、`plugin/settings.py:447`（**256 KiB**）、`docs/changelog/plugin-push-message-v2.md`。
 >
-> **修订说明**：旧版本把 `push_message` 写成 `async` 并对它 `await`（约 18 处），把带 `DeprecationWarning` 的 `content=` 当成「快捷用法」，还臆造了 priority 语义分档。另有外部审查报告声称存在 `submitted` 回执、`payload_too_large`、512KiB 上限与 `ctx.images.upload()`——**源码里都不存在**，本文不采纳这些说法。
+> **官方 `Project-N-E-K-O/N.E.K.O` main `acfbdbc`（2026-11-15）已演进**，与本篇冲突之处一律以官方新版为准：
+> - `push_message(...) -> PushMessageResult`，返回**本地提交回执** `{"submitted": bool, "reason": ..., "ok": ...}`；`reason` 稳定取值为 `backpressure` / `transport_error` / `transport_unavailable` / `payload_too_large`。`submitted=True` 只表示 SDK 已把载荷交给本地权威提交路径并接管责任，**不代表宿主已消费、已显示或已送达**。
+> - `MESSAGE_PLANE_PAYLOAD_MAX_BYTES` 默认 **512 KiB**（`plugin/settings.py:588` = `512 * 1024`，`NEKO_MESSAGE_PLANE_PAYLOAD_MAX_BYTES` 可调）；超限时**本地拒绝整条 push**，`submitted=False` + `reason=payload_too_large`，同一消息里的 text / `ui_action` 一起被拒。
+> - 新增 `await ctx.images.upload(image_bytes, mime="image/png")`：线程池归一化（最长边 ≤2048 的 JPEG）后走独立媒体通道上传，返回 `image` part。源图 >32 MiB 抛 `ValueError`，归一化后 >8 MiB 也抛 `ValueError`；chat 侧另有每推 8 图 / 内联 8 MiB 上限。它**只准备临时资源**，不显示、不入模型上下文、不触发回复。
+> - 新增 `docs/plugins/push-message.md`（官方完整规范）与 `docs/plugins/chat-cards.md`（HTML 卡片，见 `51` 篇 / `SKILL.md §5`）。
+> - `visibility` 可组合（如 `["chat","hud"]`）、`ai_behavior` 为 `respond / read / blind`；HUD 目前只渲染 text part。
+>
+> **修订说明**：旧版本曾把 `push_message` 写成 `async` 并 `await`（约 18 处），把 `content=` 当「快捷用法」，臆造 priority 语义分档——这些仍是错的。但早期外部审查报告提到的 `submitted` / `payload_too_large` / 512KiB / `ctx.images.upload()` **在官方新版确实存在**；上一轮以旧快照判其「不存在」是基线选择错误，见 `REVIEW_FIXES.md §9`。
 
-## 1. 它是同步方法，返回 `None`
+## 1. 它是同步方法（旧快照返回 `None`）
 
 SDK 侧（`plugin/sdk/shared/core/context.py:390`）是普通 `def`，宿主侧（`plugin/core/context.py:846`）签名标注 `-> None`。
 
@@ -18,8 +26,8 @@ def push_message(self, *, visibility=None, ai_behavior=None, parts=None,
                  fast_mode=False, delivery=None, reply=None) -> None:
 ```
 
-- **不要 `await`**：`await ctx.push_message(...)` 会抛 `TypeError`。
-- **插件侧拿不到回执**：返回 `None`，没有 `submitted` / `payload_too_large` 之类的字段可检查。发送是否成功要看宿主日志与消息平面，不要写 `if receipt.submitted`。
+- **不要 `await`**：它是同步方法，`await ctx.push_message(...)` 会抛 `TypeError`（两版一致）。
+- **回执有代差**：旧快照返回 `None`，插件侧拿不到回执；**官方新版返回 `PushMessageResult`**，可 `result["submitted"]` / `result.get("reason")`，但只能当「本地已提交」用。写兼容代码时先确认目标版本，不要在新版里断言「一定没有回执」，也不要在旧版里检查 `submitted`。
 - 需要非阻塞时用 `await self.ctx.push_message_async(...)`，它用 `asyncio.to_thread` 包装同步调用（`plugin/core/context.py:1272`）。
 - **v2 优先**：用 `parts`；`message_type` / `description` / `content` / `binary_data` / `binary_url` / `mime` / `delivery` / `reply` / `unsafe` 等 v1 参数都会告警，官方计划移除。
 - `priority` 是整数，默认 `0`；**官方没有定义 info / warning / 紧急分档**，不要自行编造语义。

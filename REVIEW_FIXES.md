@@ -1,4 +1,4 @@
-# 深审问题修复对照表（4.1.1）
+# 深审问题修复对照表（4.1.1 基线 + 4.2.0 纠偏）
 
 > 本文件记录 `Project_Neko-plugin_skill-深审-1114193300.md` 中每个问题的处理结果与依据，供复核与回滚。
 
@@ -10,7 +10,8 @@
 | 同步方式 | `git` 直连 github.com 走代理 SSL 握手失败，改用 GitHub API zipball 下载快照；原 zip 保留为回滚基线 |
 | 回滚 | 用工作区根目录的 `Project_Neko-plugin_skill-main.zip` 还原；同步目录无 `.git` |
 | 事实基准 | 本地 `N.E.K.O-main (1)/N.E.K.O-main` 的 `plugin/` 源码、`docs/plugins/`、`.agent/skills/neko-plugin/` |
-| 核对原则 | **逐条以源码为准，不盲从审查报告**。报告里与源码不符的条目见 §6，一律未采纳 |
+| 核对原则（4.1.1） | 逐条以**本地旧快照**源码为准，不盲从审查报告；与旧快照不符的条目见 §6，当时一律未采纳 |
+| **4.2.0 纠偏** | 2026-11-15 只读查询官方 `Project-N-E-K-O/N.E.K.O` main `acfbdbc`（**未克隆、未下载仓库**）后发现：§6 中多条「不成立」结论**只对旧快照成立**，官方新版中审查报告的说法是对的。逐条勘误见 **§9**；旧快照与官方 main 按 A/B 双口径标注 |
 | 上游推送 | 2026-11-15 单 commit `11b2bdef8a4918ee61de5401a755fc6ac10f0eb5` 推到 `main`；Git Data API 一次提交 132 个 tree 条目（71 新增/更新 + 61 删除），远端 71 个文件与本地逐条 blob hash 一致 |
 | 本地工作副本 | `Project_Neko-plugin_skill/` 已 `git init` 并跟踪 `origin/main`；`http.version=HTTP/1.1` 解决本地代理下 git 的 HTTP/2 握手失败（**无需**关闭 TLS 校验），`core.autocrlf=input` |
 
@@ -59,9 +60,11 @@
 - **E（可能）**：firecrawl 依赖名与 API、`Input type="range"`、`50` 号 file:line 出处、市场 31 插件统计——均**未核实**，已在 `SKILL.md` §11、`examples/README.md`、`42` 相关处明确标注，不写成事实。
 - **F（安全）**：补运行时配置是明文 TOML 的提示、用户可配外部 API 地址会把 Key 发往该地址的风险、抓取内容回灌 LLM 前的截断与提示注入缓解；`14` 的 `update_own_config` 说明同步。
 
-## 6. 审查报告中经源码核对**不成立**的条目（未采纳）
+## 6. 审查报告中经**本地旧快照**核对不成立的条目（4.1.1 未采纳）
 
-> 这些说法如果照抄进技能包，会变成新的错误。全部保留在文档中作为「不要写」的反例。
+> ⚠️ **本节只适用于工作区本地旧快照，已被 4.2.0 部分推翻**。官方 `main`（`acfbdbc`，2026-11-15）中下表多条说法其实是**真实存在的能力**，属于版本演进而非报告误判。**逐条勘误见 §9**，以 §9 为准。
+>
+> 下表仍保留作为「旧快照下不可写」的反例；写插件前必须先确认目标版本，并用 `uv run neko-plugin --help` 核对命令集。
 
 | 报告说法 | 源码事实 |
 |---|---|
@@ -100,3 +103,48 @@
 3. 若上游 N.E.K.O 主仓库有更新，重新核对 `decorators.py`、`context.py`、`zmq_transport.py`、`schema.py` 与 CLI 注册清单，再更新本表「事实基准」版本。
 4. 本次修复沿用版本号 `4.1.1` 但未打新 tag；如需在 Release 页可见，补一个 `v4.1.1-fix` 或 `v4.1.2` 标签。（原「无法回推上游」问题已解决，见 §0）
 5. `references/` 的 359 个 Python 代码块中有 100 个无法独立编译，均为「类方法摘录」「签名 `...` 占位」「函数签名原文」三类文档体裁，**不是事实错误也不是本次修复的回归**；已在 `references/README.md` 与 `SKILL.md` §11 加全局说明。若要整体改成可编译片段，属于独立的大规模文档重构。
+
+
+---
+
+## 9. 版本代差勘误（4.2.0 · 2026-11-15）
+
+> **背景**：4.1.1 的事实基准是工作区 `N.E.K.O-main (1)/N.E.K.O-main`（旧版 SDK 0.1.x）。官方 `Project-N-E-K-O/N.E.K.O` 的 `main`（commit `acfbdbc`，2026-11-15，0.9.x 系列）已演进。**用 A 版源码否定 B 版文档是基线选择错误**，导致 §6 把一批针对新版的说法误判为「报告误判」。本次通过 GitHub REST API **只读查询**官方文档与源码（未克隆、未下载仓库文件）逐条复核。
+
+### 9.1 §6 中「不成立」但官方 main **确实存在**的条目
+
+| 审查报告 / §6 原说法 | 官方 main 事实 | 依据 |
+|---|---|---|
+| `push_message` 有 `submitted` 回执 | 成立。`push_message(...) -> PushMessageResult`，返回 `{"submitted": bool, "reason": ..., "ok": ...}`；`reason` 取 `backpressure` / `transport_error` / `transport_unavailable` / `payload_too_large`。**`submitted=True` 只表示本地已提交，不代表送达** | `plugin/sdk/shared/core/context.py:463`、`docs/plugins/push-message.md` |
+| 有 `payload_too_large` 结果 | 成立。超限在**本地**拒绝整条 push，返回 `submitted=False` + 该 reason | `docs/plugins/push-message.md` L102–111 |
+| 载荷上限 512 KiB | 成立。`MESSAGE_PLANE_PAYLOAD_MAX_BYTES = 512 * 1024`（旧快照 256 KiB） | `plugin/settings.py:588` |
+| 用 `ctx.images.upload()` 传大文件 | 成立。`await ctx.images.upload(bytes, mime=...)`，源 32 MiB / 归一化 8 MiB 上限，失败抛 `ValueError` | `docs/plugins/push-message.md` §Image upload |
+| 缺失 `ChatCard` / `bus.frames` 第 6 条总线 | 成立。`ChatCard` / `CardSubmissionError` / `PluginView` 由 `plugin.sdk.plugin` 导出；`bus.frames` 有独立实现 | `plugin/sdk/shared/core/cards.py`、`plugin/sdk/plugin/__init__.py:133-135`、`plugin/core/bus/frames.py`、`docs/plugins/chat-cards.md`、`docs/plugins/sdk-reference.md` §Frames |
+| 缺失 `[plugin.install]` / `[plugin.models]` manifest 字段 | 成立。`install: Optional[PluginInstallSchema]`、`models: Dict[PluginModelUsageId, PluginModelRequirementSchema]` | `plugin/config/schema.py:227-228`（类定义在 :100 / :32 / :146） |
+| CLI 有 `publish` 顶层子命令 | 成立。`publish <plugin>` / `publish github <plugin>` / `publish market <release-url>` 三模式 | `plugin/neko_plugin_cli/cli.py` 注册 `publish_cmd.register(...)`、`commands/publish_cmd.py:104-175`、`docs/zh-CN/plugins/cli.md` §5 |
+| `docs/plugins/push-message.md` | 成立，官方仓库有该文件（约 24K 字符）；旧快照没有 | `docs/plugins/push-message.md` |
+| `setup-repo --upgrade-github-actions` / `create-repo` | 成立，均为新版真实顶层命令 | `commands/init_cmd.py:73-135` |
+
+### 9.2 §6 中**仍然成立**的结论（不要写进文档）
+
+- ZMQ 传输是 `PUSH/PULL` + `pickle` + channel tag，**不是** PAIR / inproc / JSON；`ormsgpack` 属于 `plugin/message_plane/*` 另一条通道。
+- 官方 `decorators.md` 曾给出同步 `def` 定时器示例，与 `host.py` 的 `asyncio.run(fn())` 实现冲突——结论（必须 `async def`）正确，依据要换。
+- `host.py:1383` / `:1174` 等固定行号会随版本漂移，不作为依据。
+- **新版也没有**的：`bus.emit()` / `get_recent()` / `union()` / `intersect()` / `difference()`、`on_init` / `on_start` / `on_stop` / `on_unload` 钩子、`[plugin.dependencies]` 内联表、`deps` / `release` 顶层子命令、`init setup-repo` / `init create-repo` 二级写法。`release_cmd.py` / `validate_cmd.py` 仍是内部实现模块。
+- `ChatCard` 不是持久化对象、卡片里的脚本/内联事件处理器**不会执行**（script-disabled iframe）；不能当成 JS 运行时。
+
+### 9.3 两版 CLI 命令集（以 `--help` 为准）
+
+| 官方 main `acfbdbc` | 本地旧快照 |
+|---|---|
+| `init` / `setup-repo` / `create-repo` / `check` / `sync` / `lint` / `precheck` / `build` / `install` / `analyze` / **`publish`** | `init` / `init-repo` / `setup-repo` / `add` / `sync` / `check` / `build` / `install` / `inspect` / `verify` / `analyze` |
+
+- 新版**没有** `add`（依赖写 `pyproject.toml` 后 `sync --clean`）、`inspect` / `verify`（合并进 `check -r`）、`init-repo`（改为 `create-repo`）、`init --no-interactive`。
+- 新版 `deps_cmd.py` 只注册 `sync`，`lint` / `precheck` / `publish` 是新增的顶层命令。
+- 完整工作流、构建包格式、验证分层与审核证据链见 [`neko-plugin-dev/references/51-build-publish-and-market-review.md`](neko-plugin-dev/references/51-build-publish-and-market-review.md) 与 [`OTHER.md`](OTHER.md)。
+
+### 9.4 4.2.0 的处理方式
+
+采用 **A/B 双口径**而不是简单翻转结论：`SKILL.md` 开头声明两条基线；构建/发布/验证/审核统一以官方 main 为准（§7 + 51 篇）；`00`–`50` 篇与示例的 `check --strict` 实测标注为旧快照口径；`30` / `31` / `01` / `07` / `12` / `05` / `06` 等篇在冲突处加版本代差说明。这样既不丢弃 4.1.1 已验证的成果，也不再把新版事实写成错误。
+
+**仍未验证**：官方 `publish → GitHub Release → Market 上架` 全链路、`NEKO_PLUGIN_MARKET_SECURITY_CHECKS=1` 的扫描行为、Market 人工审核标准（未在公开仓库披露）。本表所有官方 main 结论均来自只读查询，未在本机运行新版 CLI。

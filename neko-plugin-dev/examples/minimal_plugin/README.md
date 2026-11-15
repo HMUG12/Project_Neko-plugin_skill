@@ -26,7 +26,9 @@ uv run pytest examples/minimal_plugin/tests       # 不依赖 N.E.K.O 运行时
 uv run neko-plugin check <本目录绝对路径> --strict   # 在 N.E.K.O 仓库环境执行
 ```
 
-**2026-11-15 实测**：用工作区内的 N.E.K.O 主程序源码、经 `uv run --no-project` 隔离环境调用官方 CLI，`check --strict` 返回 **`[OK] 0 error(s), 1 warning(s)`（exit 0）**。唯一警告是 `plugin directory is not a standalone git repository`——示例按设计放在技能包仓库内，用 `neko-plugin init-repo` / `setup-repo` 拆成独立插件仓库后即消失，不建议在示例目录里再 `git init`。
+**2026-11-15 实测**：用工作区**本地旧快照** N.E.K.O 源码、经 `uv run --no-project` 隔离环境调用 CLI，`check --strict` 返回 **`[OK] 0 error(s), 1 warning(s)`（exit 0）**。唯一警告是 `plugin directory is not a standalone git repository`——示例按设计放在技能包仓库内，不建议在示例目录里再 `git init`。
+
+> ⚠️ **该实测只覆盖旧快照 CLI**。官方 `Project-N-E-K-O/N.E.K.O` main（2026-11-15 `acfbdbc`）新增了 `lint`（pinned ruff）、`precheck`（lint → sync --clean → check -r）、`publish`（Release + Market）与构建来源证据链；本示例**未**在这些新门禁上验证。完整官方工作流见 [`../../references/51-build-publish-and-market-review.md`](../../references/51-build-publish-and-market-review.md) 与 [`../../../OTHER.md`](../../../OTHER.md)。
 
 `check --strict` 把缺仓库支撑文件按错误处理，所以这里补齐了 `tests/test_smoke.py`、`.vscode/settings.json`、`.vscode/tasks.json`、`.github/workflows/verify.yml`（均由官方 `setup-repo --github-actions` 生成）、`[plugin.sdk]` 区间表，以及 `.gitignore` 里的 `.pytest_cache/` 与 `store.db`。面板已在 `[[plugin.ui.panel]]` 的 `permissions` 中声明 `config:write`；权限全集以目标版本 `plugin/core/ui_manifest.py` 为准。
 
@@ -38,4 +40,4 @@ uv run neko-plugin check <本目录绝对路径> --strict   # 在 N.E.K.O 仓库
 
 ## 未验证声明
 
-官方静态校验 `check --strict` **已跑通**（见上）；本示例仍**未在真实宿主中加载、打开面板并 Reload**。`init → check → Reload` 全链路的运行时部分未验证。`config.update` / `store.set` / `unwrap_or` 等具体方法名请以目标版本 `sdk/plugin/base.py` 与 `docs/plugins/sdk-reference.md` 复核。
+旧快照 CLI 的静态校验 `check --strict` **已跑通**（见上）；本示例仍**未在真实宿主中加载、打开面板并 Reload**，也**未**跑过官方 main 的 `lint` / `precheck` / `publish`。`init → check → Reload` 全链路的运行时部分未验证。`config.update` / `store.set` / `unwrap_or` 等具体方法名请以目标版本 `sdk/plugin/base.py` 与 `docs/plugins/sdk-reference.md` 复核。

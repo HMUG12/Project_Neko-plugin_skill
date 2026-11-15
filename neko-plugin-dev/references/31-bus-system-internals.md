@@ -25,16 +25,21 @@
 
 官方对 Bus 的定义是"**宿主状态的只读/订阅门面**"，而不是基于 topic 的 pub/sub。它支持惰性求值与变更订阅。
 
-### 五条总线
+### 总线命名空间（**版本代差：旧版 5 条 / 官方 main 6 条**）
 
 ```
-BusHub (门面中枢)
+BusHub (门面中枢)  —— 本篇以工作区旧快照为准
 ├── messages/      ← 消息：聊天消息、插件推送   （可 get 查询 + watch 订阅）
 ├── events/        ← 事件：系统/自定义事件        （可 get 查询 + watch 订阅）
 ├── lifecycle/     ← 生命周期：插件状态变更        （可 get 查询 + watch 订阅）
 ├── conversations/ ← 对话上下文                   （只读快照）
-└── memory/        ← 记忆                         （只读、有界、短 TTL 快照）
+├── memory/        ← 记忆                         （只读、有界、短 TTL 快照）
+└── frames/        ← 【仅官方 main 新增】宿主已推给模型提供商的最近几帧
 ```
+
+> **官方 `Project-N-E-K-O/N.E.K.O` main `acfbdbc`（2026-11-15）新增第 6 条总线 `bus.frames`**（`plugin/core/bus/frames.py`、`docs/plugins/sdk-reference.md` §Frames）。它保存宿主**已经推给模型 provider 的原始字节**，`frames = await self.bus.frames.get(max_count=4)`，记录含 `image_base64` / `mime` / `source` / `captured_at` / `turn_id` / `generation` / `frame_id` / `metadata`，可用 `sort(by="timestamp", reverse=True).limit(1)`。
+>
+> **它不是日志、也不是队列**：message-plane 的 PUB socket 对慢订阅者/高水位会丢帧，宿主侧也有丢弃点。这些 store 是共享的，任何启用的插件都能读 `conversations` 和 `frames`（含图片），读取不按插件隔离。本篇其余「五条总线」的描述只适用于旧快照；`bus.emit()`、`get_recent()`、`union()` 等仍不存在。
 
 ### 数据流（子进程 → 宿主）
 

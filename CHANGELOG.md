@@ -4,6 +4,30 @@
 
 ---
 
+## 4.2.0 · 2026-11-15（官方工作流对齐版）
+
+> **只读查询**官方 `Project-N-E-K-O/N.E.K.O` main `acfbdbc`（2026-11-15），**未克隆、未下载仓库文件**。本版补齐构建方法、官方发布工作流、验证分层与 Market 审核，并纠正 4.1.1 的基线错误。
+
+### 新增：官方构建 / 发布 / 审核
+- 🆕 `neko-plugin-dev/references/51-build-publish-and-market-review.md`：`.neko-plugin` / `.neko-bundle` ZIP 包结构与 `build` 参数；`init → setup-repo / create-repo → check / lint / precheck → push → Verify CI → Market 首次审核 → Revision → publish → GitHub Release 三资产 → Market stable`；验证分层与 `check` 盲点；`market-evidence.json` 与 build provenance attestation；两版 CLI 对照表与检查清单。
+- 🆕 `OTHER.md` 重写为投稿与上架全流程（首次审核 / Revision / publish 三模式 / beta / 撤回 / 常见失败）。
+- `SKILL.md` §7 整段重写为双口径：两版 CLI 对照、构建方法、发布工作流、验证分层、审核与证据链、版本代差勘误；§0/§1/§2/§3/§5/§9/§10/§11 同步；454 行（<500），description 补齐发布/审核关键词。
+- `references/README.md` 加 51 号索引与「官方构建/发布/审核篇」分组、铁律 #11/#18/#20 与快速排查项改为双口径；`12-master-checklist.md` 追加构建/验证/投稿审核清单；`05-testing.md`、`06-deployment.md` 头部指向 51 篇。
+
+### 基线纠偏（重要）
+- 4.1.1 的事实基准是工作区**本地旧快照**；官方 main 已演进到另一套 CLI 与 SDK。用旧快照否定新版事实导致 `REVIEW_FIXES.md §6`「未采纳清单」中多条结论**只对旧版成立**。
+- 经官方 main 只读复核，下列条目**确实存在**：`push_message -> PushMessageResult`（`submitted` / `reason=payload_too_large`）、载荷上限 **512 KiB**（`plugin/settings.py:588`）、`await ctx.images.upload()`、`docs/plugins/push-message.md`、`ChatCard` / `create_card` / HTML chat cards、`bus.frames` 第 6 条总线、`[plugin.install]` / `[plugin.models]`（`schema.py:227-228`）、`publish` 顶层命令、`create-repo` 与 `setup-repo --upgrade-github-actions`。
+- 逐篇纠偏：`30-push-message-internals.md` 新增 §0 版本代差；`31-bus-system-internals.md` 说明新版第六总线；`01-plugin-toml.md` 补 `[plugin.install]` / `[plugin.models]` 并说明新版已拒绝 `[plugin.host]`；`07-gotchas.md` #37 改为双口径。
+- 官方新版**没有** `add` 命令（依赖写 `pyproject.toml` 后 `sync --clean`）、也没有 `init --no-interactive`；相关命令已从 `SKILL.md` / `OTHER.md` / `01` / `12` / `references/README.md` 更正。
+- 仍然成立、不要写进文档的：`bus.emit()` / `get_recent()` / `union()`、`on_init` / `on_start` / `on_stop` 等虚构钩子、`[plugin.dependencies]` 内联表、`deps` / `release` 顶层子命令、ZMQ 是 PAIR/JSON。
+- 完整勘误表见 `REVIEW_FIXES.md §9`。
+
+### 仍待验证
+- 官方 `publish → GitHub Release → Market 上架` 全链路、`NEKO_PLUGIN_MARKET_SECURITY_CHECKS=1` 扫描行为、Market 人工审核标准**均未真机验证**（人工审核标准未在公开仓库披露）。
+- 示例 `examples/minimal_plugin/` 的 `check --strict` 实测依据是**旧快照 CLI**；官方 main 新增的 `lint` / `precheck` / `publish` 门禁未跑。真实宿主加载与 Reload 仍未跑。
+
+---
+
 ## 4.1.1 · 2026-11-15（深审修复版）
 
 > 依据 N.E.K.O 主程序源码（`plugin/`、`docs/plugins/`、官方 `.agent/skills/neko-plugin/`）逐条核对后重写事实层。**未采纳**外部审查报告中若干与源码不符的说法（详见 `REVIEW_FIXES.md`）。

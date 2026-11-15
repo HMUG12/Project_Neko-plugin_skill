@@ -13,7 +13,7 @@
 - [ ] `[plugin.store] enabled = true`（如果需要持久化配置）
 - [ ] `[settings]` 节包含所有配置项，且有合理的默认值
 - [ ] `__init__.py` 无 UTF-8 BOM（`python -c "py_compile.compile('__init__.py', doraise=True)"`）
-- [ ] Python 包声明在 `pyproject.toml [project].dependencies` 且已用 `neko-plugin add` / `sync` 装进 `vendor/`；`plugin.toml` 的 `dependencies` 只写插件 ID
+- [ ] Python 包声明在 `pyproject.toml [project].dependencies` 且已用 `neko-plugin sync <id> --clean` 装进 `vendor/`（官方新版无 `add` 命令，旧快照才有）；`plugin.toml` 的 `dependencies` 只写插件 ID
 - [ ] `[settings]` 节配置项与 `DEFAULT_CONFIG` 字典 key 完全一致
 
 ## Python 后端
@@ -223,3 +223,34 @@
 - [ ] 启动时检查并补充缺失的配置项（配置漂移防范）
 - [ ] 所有配置项在 `[settings]` 中有默认值
 - [ ] `config_change` 钩子正确恢复所有配置到实例变量
+
+---
+
+## 构建 / 验证 / 投稿审核 ⭐ 新增（官方 main，见 `51` 篇）
+
+> 本段以官方 `Project-N-E-K-O/N.E.K.O` main `acfbdbc`（2026-11-15）为准；旧快照 CLI 没有 `publish` / `lint` / `precheck`。
+
+### 构建
+- [ ] `build` 产物是 `.neko-plugin`（bundle 为 `.neko-bundle`），`manifest.toml` 的 `id` / `version` / `package_type` 与源码一致
+- [ ] 包内无 `__pycache__` / `.pytest_cache` / `.mypy_cache` / `.venv` / `dist` / `build`
+- [ ] `payload/dependencies.toml` 由构建自动生成，未手工编辑
+- [ ] `check -r` 的 `payload_hash_verified=True`；理解 `metadata.payload.hash` 是对规范化 `payload/` 算 sha256
+- [ ] 运行时安装走插件中心「导入」，不靠 CLI `install` 直接写运行时目录
+
+### 验证分层
+- [ ] `check <id>` / `check -s <id>` / `lint <id>` / `precheck <id>` 全部通过
+- [ ] `check -r <id>` 通过（含插件测试、包检查、payload hash）
+- [ ] `check -r --market-release <id>` 通过（含仓库名 / origin / tag-version 对齐 / release.yml / 工作区干净）
+- [ ] GitHub Actions「Verify N.E.K.O Plugin」通过
+- [ ] Hosted TSX 改动跑过 `npm run check-hosted-tsx`；entry / UI 改动有触发测试
+- [ ] 清楚 `check` 的盲点（不保证 entry `async def`、不覆盖 lifecycle/timer/UI 语义、`auto_start=false` 不阻止导入），并在真实宿主中加载 / 触发 / 打开面板 / Reload
+
+### 投稿与审核
+- [ ] 插件目录有自己的 `.git/`，`origin` 指向 `n.e.k.o_plugin_<id>` 的公开仓库
+- [ ] `git status --short` 为空，当前 commit 已 push
+- [ ] `verify.yml` / `release.yml` 是当前标准模板，`ruff.toml` 未被自定义破坏
+- [ ] `plugin.toml.version` 是从未发布过的新版本号，tag 为 `v<version>`
+- [ ] 首次审核已提交（一个插件只一次）；按审核意见用 Revision 提交完整 commit SHA
+- [ ] 审核**已通过**（不只是已申请）；`publish` 完整跑到「Market 发布成功」
+- [ ] Release 三资产齐全：`<id>.neko-plugin`、`<id>.market-release-check.txt`、`market-evidence.json`
+- [ ] `market-evidence.json` 与 build provenance attestation 已生成；Market stable latest 已更新

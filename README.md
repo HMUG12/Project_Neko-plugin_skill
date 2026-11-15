@@ -1,23 +1,25 @@
-# N.E.K.O 插件开发 Skill · neko-plugin-dev 4.1.1
+# N.E.K.O 插件开发 Skill · neko-plugin-dev 4.2.0
 <img width="1024" height="1024" alt="20260912123440-c080be1e-2be8996c" src="https://github.com/user-attachments/assets/399b3757-1632-4c1c-b20d-1aac1c84430b" />
 
 
 
 > 一套面向 [N.E.K.O](https://project-neko.online) 插件开发的 Skill 辅助，由 Agent 辅助，从搭建到避坑上线，全流程覆盖，推荐使用最新技能哦。
 
-[![Version](https://img.shields.io/badge/version-4.1.1-blueviolet.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-4.2.0-blueviolet.svg)](CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![N.E.K.O SDK](https://img.shields.io/badge/N.E.K.O_SDK-0.1.x-blue.svg)]()
 [![Python](https://img.shields.io/badge/Python-3.11%2B-blue.svg)]()
 [![TSX](https://img.shields.io/badge/TSX-React_18-61dafb.svg)]()
 
-## 已验证目标版本（先看这里）
+## 版本基线（先看这里 · 双口径）
 
 | 项目 | 值 |
 |------|----|
-| 目标 SDK 约束 | `recommended = ">=0.1.0,<0.2.0"`，`supported = ">=0.1.0,<0.3.0"` |
-| 官方文档核对日期 | 2026-09-12（[Quick Start](https://project-neko.online/plugins/quick-start) · [Plugin Config](https://project-neko.online/plugins/plugin-toml) · [SDK 迁移清单](https://project-neko.online/plugins/migration-v0.9)） |
-| 运行验证状态 | **未在干净环境跑通端到端示例**。本文档的“已核实”仅指与上述官方文档逐条对照，**不等于**已在本机 SDK 上运行通过 |
+| **A · 官方最新基线** | `Project-N-E-K-O/N.E.K.O` main `acfbdbc`，2026-11-15 **只读查询**（未克隆、未下载仓库）。构建 / 发布 / 验证 / 审核以 [`51-build-publish-and-market-review.md`](neko-plugin-dev/references/51-build-publish-and-market-review.md) 与 [OTHER.md](OTHER.md) 为准 |
+| **B · 本地旧快照** | 工作区 `N.E.K.O-main (1)`（SDK `>=0.1.0,<0.2.0`，官方文档核对 2026-09-12）。`00`–`50` 篇的事实层与示例 `check --strict` 实测以此为准 |
+| 为何要分 | 两版 CLI 命令集、`push_message` 回执与载荷上限、manifest 字段、Bus 命名空间均有**代差**。4.1.1 曾误用 B 版源码否定 A 版事实，4.2.0 已纠偏，详见 [REVIEW_FIXES.md §9](REVIEW_FIXES.md) 与 `SKILL.md §7.6` |
+| 运行验证状态 | **未在干净环境跑通端到端示例**；示例仅通过旧快照 CLI 的 `check --strict`（0 error / 1 预期 warning），官方 main 的 `lint` / `precheck` / `publish` 门禁未实测 |
+| 目标 SDK 约束（旧快照口径） | `recommended = ">=0.1.0,<0.2.0"`，`supported = ">=0.1.0,<0.3.0"` |
 
 > ⚠️ 只有本表对齐的 SDK 版本区间内结论才可靠。官方文档仍可能继续变化；每次主 SDK 变更后请重跑 `uv run neko-plugin check <id> --strict` 与示例验证，并更新本表与核对日期。凡是文中未标注“已验证”的代码片段，一律视为**示意**，上手前先在目标 SDK 上验证。
 
@@ -61,14 +63,14 @@ Project_Neko-plugin_skill/
 ├── README.md                              ← 你正在看的文件
 ├── CHANGELOG.md                           ← 版本变更日志
 ├── LICENSE                                ← MIT 协议
-├── OTHER.md                               ← 投稿前准备（官方 CLI 流程）
+├── OTHER.md                               ← 投稿与上架（官方 publish 工作流 + 审核）
 ├── n.e.k.o_plugin_example/README.md       ← 市场仓库命名示例说明
 ├── REVIEW_FIXES.md                        ← 深审问题修复对照表
 └── neko-plugin-dev/                        ← 技能包本体（目录名与 SKILL.md 的 name 一致）
     ├── SKILL.md                           ← 技能入口（TRAE 加载这个文件）
     ├── examples/                          ← 示例插件（尚未跑通端到端验证，见 examples/README.md）⭐
     │   └── minimal_plugin/                 ← 零第三方依赖的最小示例：plugin.toml + pyproject.toml + __init__.py + routers/ + ui/ + tests/
-    └── references/                        ← 51 篇专题参考文档（含 00 可选工作流 + 39 官方指南 + 40–50 融合/逆向篇）
+    └── references/                        ← 52 篇专题参考文档（含 00 可选工作流 + 39 官方指南 + 40–50 融合/逆向篇 + 51 官方构建/发布/审核）
         │
         │ ── 可选篇（1 篇 · 大型新插件按需启用）── ⭐
         ├── 00-development-coordinator.md   ← 五阶段工作流 + 最小状态持久化（可选，非强制前置）
@@ -270,9 +272,20 @@ uv run python launcher.py                           # 启动源码版 N.E.K.O �
 
 ***
 
-## 4.1.1 修订说明
+## 4.2.0 修订说明（官方工作流对齐版）
 
-> 本版本依据 N.E.K.O 主程序源码与 `docs/plugins/` 重写事实层：修正依赖声明、定时器、生命周期、ZMQ、push_message、UI action 六类致命错误，重建示例插件，统一版本与编号，并补齐官方 CLI 流程。详见 `REVIEW_FIXES.md` 与 `CHANGELOG.md`。
+> 本版本**只读查询**官方 `Project-N-E-K-O/N.E.K.O` main（commit `acfbdbc`，2026-11-15），未克隆、未下载仓库文件。重点补齐四块：
+>
+> - **构建方法**：`.neko-plugin` / `.neko-bundle` ZIP 包格式、`build` 参数、`payload/dependencies.toml`、`metadata.payload.hash`、`install` 只是兼容命令。
+> - **官方工作流**：`init → setup-repo / create-repo → check / lint / precheck → push → Verify CI → Market 首次审核 → Revision → publish → GitHub Release 三资产 → Market stable`。
+> - **验证方式**：`check` / `-s` / `-r` / `-r --market-release` 分层、pinned ruff `0.12.4`、`precheck` 三门禁、CI `verify.yml` / `release.yml`、Hosted TSX 检查、`check` 的盲点。
+> - **审核**：首次审核与 Revision 语义、自动门禁（id / version / tag / origin / release.yml / 工作区）、`market-evidence.json` 与 build provenance attestation 隔离链、Market 安全扫描限额。
+>
+> 同时**纠正 4.1.1 的基线错误**：上一轮以本地旧快照把 `submitted` 回执、512 KiB、`ctx.images.upload()`、`ChatCard`、`bus.frames`、`[plugin.install]` / `[plugin.models]`、`publish` 判成「报告误判」，这些在官方 main 中**真实存在**。现按 A/B 双口径标注，见 `REVIEW_FIXES.md §9`。
+
+## 4.1.1 修订说明（历史）
+
+> 本版本依据工作区本地 N.E.K.O 快照与 `docs/plugins/` 重写事实层：修正依赖声明、定时器、生命周期、ZMQ、push_message、UI action 六类致命错误，重建示例插件，统一版本与编号。其「未采纳清单」（`REVIEW_FIXES.md §6`）**只适用于旧快照**，已在 4.2.0 纠偏。详见 `REVIEW_FIXES.md` 与 `CHANGELOG.md`。
 
 ## 历史更新日志
 

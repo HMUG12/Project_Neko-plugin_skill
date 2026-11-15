@@ -2,7 +2,9 @@
 
 > 官方推荐的开发方式**不是**把手写源码复制进用户插件目录，而是在源码目录或用开发者模式就地开发，改完点插件详情页 **Reload**。手工复制只是"已安装包"场景的兜底手段。
 >
-> 本文已对照官方 Quick Start / Plugin Config 文档核对（核对日期 2026-09-12）；未在干净环境跑通端到端流程，命令与路径请以你目标 SDK 的官方示例为准。
+> 本文基于**工作区本地旧快照**（核对 2026-09-12）；未在干净环境跑通端到端流程，命令与路径请以你目标 SDK 的官方示例为准。
+>
+> ⭐ **官方 `main`（`acfbdbc`，2026-11-15）的构建与发布流程已不同**：`build` 产出 ZIP 格式的 `.neko-plugin` / `.neko-bundle`；`install` 只是兼容命令、真实安装走插件中心「导入」；发布走 `publish <id>`（打 `v<version>` tag → GitHub Release 三资产 → 通知 Market），并有 `lint` / `precheck` 门禁与 `market-evidence.json` 构建来源证据。详见 [`51-build-publish-and-market-review.md`](51-build-publish-and-market-review.md) 与 [`../../OTHER.md`](../../OTHER.md)。**不要**按本文件场景 C 的手工复制去理解官方发布流程。
 
 ## 三种运行场景（先确认你是哪一种）
 
