@@ -17,7 +17,7 @@
 |------|----|
 | **唯一基线** | 官方 `Project-N-E-K-O/N.E.K.O` main `acfbdbc`，2026-11-15 **只读查询**（未克隆、未下载仓库）。`SKILL.md` 与 `00`–`51` 篇全部事实层以此为准；构建 / 发布 / 验证 / 审核见 [`51-build-publish-and-market-review.md`](neko-plugin-dev/references/51-build-publish-and-market-review.md) 与 [OTHER.md](OTHER.md) |
 | 历史存档 | 4.1.1 / 4.2.0 的旧快照对照与勘误只保留在 [REVIEW_FIXES.md](REVIEW_FIXES.md) 与 [CHANGELOG.md](CHANGELOG.md)，**不参与当前规则判定，也不要据此写插件代码** |
-| 运行验证状态 | **未在干净环境跑通端到端示例**：示例支撑文件已按官方 `init` 模板重建、静态契约测试 10/10 通过；真宿主加载 / 面板保存 / Reload 与 `lint` / `precheck` / `publish` 均未实测 |
+| 运行验证状态 | **未在干净环境跑通端到端示例**：示例支撑文件已按官方 `init` 模板重建、静态契约测试 10 项 + smoke 1 项（共 11 passed）通过；真宿主加载 / 面板保存 / Reload 与 `lint` / `precheck` / `publish` 均未实测。**逐条阻塞原因、解除条件与审核决策见 [未完成事项与阻塞说明（待审）](UNVERIFIED.md)** |
 | 目标 SDK 约束 | `recommended = ">=0.1.0,<0.2.0"`，`supported = ">=0.1.0,<0.3.0"`（`plugin.toml` 的 `[plugin.sdk]` 区间） |
 
 > ⚠️ 官方文档仍可能继续变化；每次主 SDK 变更后请重跑 `uv run neko-plugin check <id> --strict` 与示例验证，并更新本表与核对日期。凡是文中未标注「已验证」的代码片段，一律视为**示意**，上手前先在目标 SDK 上验证。
@@ -74,7 +74,8 @@ Project_Neko-plugin_skill/
 ├── OTHER.md                               ← 投稿与上架（官方 publish 工作流 + 审核）
 ├── n.e.k.o_plugin_example/README.md       ← 市场仓库命名示例说明
 ├── REVIEW_FIXES.md                        ← 深审问题修复对照表（历史存档）
-├── scripts/verify_skill.py                ← 仓库自检：链接/语法/frontmatter/官方 init 哈希/契约测试
+├── UNVERIFIED.md                          ← 未完成事项与阻塞说明（待审）：逐条列出做不了的部分与解除条件 ⭐
+├── scripts/verify_skill.py                ← 仓库自检：链接/语法/frontmatter/官方 init 哈希/契约测试/未完成清单
 ├── .github/workflows/verify-skill.yml     ← CI：自检 + pinned ruff 0.12.4 + 示例静态测试
 └── neko-plugin-dev/                        ← 技能包本体（目录名与 SKILL.md 的 name 一致）
     ├── SKILL.md                           ← 技能入口（Agent 工具加载这个文件）
@@ -321,7 +322,7 @@ uv run neko-plugin publish <id>                     # 打 v<version> tag → Git
 > - **统一契约**：全仓 `neko-plugin add` → `sync --clean`；裸 `@ui.action` 补 `@plugin_entry`；`config_change` 签名统一为 `async def on_config_change(self, **_)`；`store.get/set` 的 `Result` 与 `await` 修正；删除 priority 自拟分档；修正 `dependencies` 在 `plugin.toml` 模板中的位置。
 > - **示例按官方 init 生成物重建**：实际执行官方 main `generator.py` 的 `generate_plugin()` / `generate_repo_support_files()`（即 `neko-plugin init` 的底层实现），`ruff.toml` / 两个 workflow / `.gitignore` / `.vscode/*` / `test_smoke.py` 共 7 份支撑文件与产出**字节一致**；面板保存改为 `config.update()` 落盘并在 `startup` / `config_change` 读回；静态契约测试扩到 10 项。
 > - **本机真跑（新增证据）**：pinned `ruff==0.12.4` 两种入口（本地 `--config ruff.toml` 与官方 CI `--isolated` 原命令）均 `All checks passed!`，真跑修掉 `routers/notes.py` 的 `I001`；补 `tests/pytest.ini` 后 `uvx pytest -q -c tests/pytest.ini tests` **11 passed**；5 个 `.py` 编译通过；全仓链接 0 失效、语法 0 失败。
-> - **真宿主验证清单**：`examples/minimal_plugin/README.md` 给出可复现的 `init → check/lint/precheck → 加载 → 保存 → Reload` 步骤；官方 main 的 `check` / `lint` / `precheck` / `publish` 与真实宿主加载仍**未跑**，本仓库**不声称**已跑通。4.1.1 在旧快照 CLI 上的 `check --strict` 结果不作为官方 main 验证。
+> - **真宿主验证清单**：`examples/minimal_plugin/README.md` 给出可复现的 `init → check/lint/precheck → 加载 → 保存 → Reload` 步骤；官方 main 的 `check` / `lint` / `precheck` / `publish` 与真实宿主加载仍**未跑**，本仓库**不声称**已跑通。4.1.1 在旧快照 CLI 上的 `check --strict` 结果不作为官方 main 验证。逐条阻塞事实与审核决策见 [UNVERIFIED.md](UNVERIFIED.md)。
 
 ## 4.2.0 修订说明（历史 · 官方工作流对齐版）
 
@@ -419,7 +420,8 @@ uv run neko-plugin publish <id>                     # 打 v<version> tag → Git
 - [ ] **README 与 SKILL.md 的「铁律」逐条一致**（编号、措辞、方向不得相反）；`references/README.md` 同步。
 - [ ] **示例可加载性**：`examples/minimal_plugin/` 的面板 id / context 与 `@ui.context` 一致，保存动作叠加了 `@plugin_entry`，Router 继承了 `PluginRouter`，依赖通道正确。
 - [ ] **敏感字段检查**：全仓无真实 API Key/Token；示例配置只留空值或 `config.example.toml` 占位。
-- [ ] **仓库自检与 CI**：`python scripts/verify_skill.py` 7 项硬门禁全通过；示例的 `uvx ruff==0.12.4 ...`（官方 CI 原命令）与 `uvx pytest -q -c tests/pytest.ini tests` 通过；`.github/workflows/verify-skill.yml` 在 push / PR 上是绿的。
+- [ ] **仓库自检与 CI**：`python scripts/verify_skill.py` 8 项硬门禁全通过（第 8 项守住 `UNVERIFIED.md` 的「待审」状态与编号唯一）；示例的 `uvx ruff==0.12.4 ...`（官方 CI 原命令）与 `uvx pytest -q -c tests/pytest.ini tests` 通过；`.github/workflows/verify-skill.yml` 在 push / PR 上是绿的。
+- [ ] **未完成事项清单**：复核 [UNVERIFIED.md](UNVERIFIED.md) 的 U-01～U-08；完成的项移入「已完成」并附命令与结果，新缺口补编号，**不允许直接删行**。
 - [ ] **运行记录**：至少记录一次在目标 SDK 上的 `neko-plugin check <id> --strict` 输出，以及加载/调用入口/打开 UI/Reload 的结果（通过 or 失败原因）。
 
 **4.3.0 起追加（官方口径，见 [51 篇 §6](neko-plugin-dev/references/51-build-publish-and-market-review.md)）**

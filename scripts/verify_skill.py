@@ -30,7 +30,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SKILL = ROOT / "neko-plugin-dev" / "SKILL.md"
 EXAMPLE = ROOT / "neko-plugin-dev" / "examples" / "minimal_plugin"
-ARCHIVE_NAMES = {"REVIEW_FIXES.md", "CHANGELOG.md"}
+ARCHIVE_NAMES = {"REVIEW_FIXES.md", "CHANGELOG.md", "UNVERIFIED.md"}
 
 OFFICIAL_INIT_SHA256 = {
     "ruff.toml": "b4303b147c481bc7ec6e96a0a68e7fb3c71d653fe1277c40ad48b4bac8b55efe",
@@ -189,6 +189,24 @@ def scan_residue() -> None:
         print(f"       ... 其余 {len(hits) - 12} 行省略")
 
 
+def check_unverified_manifest() -> None:
+    """未完成事项清单必须存在且仍标为待审，防止把缺口悄悄标成完成。"""
+    print("[8] 未完成事项清单")
+    path = ROOT / "UNVERIFIED.md"
+    if not path.is_file():
+        result(False, "未完成事项清单", "UNVERIFIED.md 缺失")
+        return
+    text = path.read_text(encoding="utf-8", errors="replace")
+    ids = re.findall(r"^### (U-\d{2})\b", text, re.M)
+    ok = (
+        "状态：待审" in text
+        and "不冒充实测" in text
+        and len(ids) >= 6
+        and len(ids) == len(set(ids))
+    )
+    result(ok, "未完成事项清单", f"{len(ids)} 条待审项 / 状态待审 / 编号唯一" if ok else "状态行或编号异常")
+
+
 def main() -> int:
     print(f"verify_skill.py — {ROOT}")
     check_links()
@@ -198,6 +216,7 @@ def main() -> int:
     check_example_files()
     check_contract_tests()
     scan_residue()
+    check_unverified_manifest()
     print()
     if failures:
         print(f"==> FAILED ({len(failures)} 项)")

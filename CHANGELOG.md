@@ -27,7 +27,14 @@
 - 官方 `plugin-market-verify.yml` 已只读核对：用 `--isolated` ruff，再在 N.E.K.O 源码树内跑 `sync --clean` 与 `check -r`。
 
 ### 仍未实测
-- 真实宿主中加载插件、打开面板保存、Reload，以及官方 main 的 `check` / `lint` / `precheck` / `publish` 门禁；`publish → GitHub Release → Market 上架` 全链路、Market 人工审核标准、`NEKO_PLUGIN_MARKET_SECURITY_CHECKS=1` 扫描行为。**本机没有官方 main 的完整源码树与 N.E.K.O 宿主**，4.1.1 在旧快照 CLI 上的 `check --strict`（0 error / 1 warning）不能当作官方 main 验证。`examples/minimal_plugin/README.md` 给出可复现清单，但本仓库不声称已跑通。
+- 真实宿主中加载插件、打开面板保存、Reload，以及官方 main 的 `check` / `lint` / `precheck` / `publish` 门禁；`publish → GitHub Release → Market 上架` 全链路、Market 人工审核标准、`NEKO_PLUGIN_MARKET_SECURITY_CHECKS=1` 扫描行为。**本机没有官方 main 的完整源码树与 N.E.K.O 宿主**，4.1.1 在旧快照 CLI 上的 `check --strict`（0 error / 1 warning）不能当作官方 main 验证。`examples/minimal_plugin/README.md` 给出可复现清单，但本仓库不声称已跑通。**逐条阻塞事实、解除条件与审核决策统一见 [UNVERIFIED.md](UNVERIFIED.md)**。
+
+### 补充：未完成事项待审清单（4.3.0 文档补充，不改规则）
+- 新增 [`UNVERIFIED.md`](UNVERIFIED.md)：把散落在 8 处文档的「未实测」声明收拢为 U-01～U-08 逐条说明，每条固定写出「要验证什么 / 为什么静态检查不够 / 阻塞事实 / 已做的替代 / 解除条件 / 复现步骤与通过判据 / 不做的风险」。
+- 明确区分三类：**A 环境或平台确实缺失**、**B 指令边界（完整官方源码树技术上可下载，但受「不下载、不克隆」限制）**、**C 主动不做（Market 提交不可逆、真实宿主写数据会污染）**；另列「不是缺口、不要误审」四项。B 类单列，不伪装成技术不可行。
+- 附本机环境实测记录（`neko-plugin` 未安装、官方源码树不存在、工作区 `N.E.K.O-main (1)` 是旧快照且无 `lint_cmd.py` / `precheck_cmd.py` / `publish_cmd.py`）与四项审核决策，供维护者逐条判断是否成立。
+- `scripts/verify_skill.py` 新增第 8 项硬门禁：校验 `UNVERIFIED.md` 存在、状态仍为「待审」、`U-xx` 编号唯一且不少于 6 条；`ARCHIVE_NAMES` 增加该文档（说明性文档不参与规则区旧口径扫描）。
+- `README.md` 结构图、版本基线表、发布前检查清单同步；`README.md` 中的「静态契约测试 10/10」明确为契约 10 项 + smoke 1 项 = 11 passed（数字本身不矛盾，此处仅消歧）。
 
 ---
 

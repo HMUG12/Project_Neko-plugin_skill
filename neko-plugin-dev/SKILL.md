@@ -465,5 +465,5 @@ uv run neko-plugin publish hello_world         # 检查→打 v<version> tag→R
 - 外部 skill 片段（40–50）无逐条许可/署名说明，引用时请自行确认来源许可。
 - 31 个市场插件的统计与「全部声明同样 SDK 区间」未复核。
 - 遇到与本文冲突的官方源码/文档，**一律以官方为准**并回填到本技能；核对时锁定到具体 commit（本版为 `acfbdbc`）。`REVIEW_FIXES.md` 与 `CHANGELOG.md` 是历史存档，不作为规则来源。
-- **真机验证是当前最大缺口**：`init → check/lint/precheck → 宿主加载 → 面板保存 → Reload → publish` 全链路需要完整 N.E.K.O 宿主与 Market 平台。4.3.0 已把「官方 init 生成器实际执行 + pinned ruff + pytest」这三层在本机跑通（见上），但文档、静态契约测试、lint 都**不能替代一次真实宿主运行**，本技能包不声称已完成。
+- **真机验证是当前最大缺口**：`init → check/lint/precheck → 宿主加载 → 面板保存 → Reload → publish` 全链路需要完整 N.E.K.O 宿主与 Market 平台。4.3.0 已把「官方 init 生成器实际执行 + pinned ruff + pytest」这三层在本机跑通（见上），但文档、静态契约测试、lint 都**不能替代一次真实宿主运行**，本技能包不声称已完成。逐条阻塞原因、解除条件与审核决策见仓库根目录 [`../UNVERIFIED.md`](../UNVERIFIED.md)（待审）。
 - 官方 `publish → GitHub Release → Market 上架` 全链路、`NEKO_PLUGIN_MARKET_SECURITY_CHECKS=1` 的扫描行为、Market 人工审核标准均**未在真机验证**；人工审核标准未在公开仓库披露。

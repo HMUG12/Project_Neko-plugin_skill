@@ -69,7 +69,7 @@ uv run neko-plugin precheck minimal_plugin          # lint → sync --clean → 
 
 官方 `plugin-market-verify.yml` 会把插件 checkout 进 N.E.K.O 源码树（那里有 `plugin.sdk`），再跑 `sync --clean` 与 `check -r`；因此官方 CI 中 `test_smoke.py` 可以正常收集。**当前本机没有官方 main 的完整源码树与宿主**，这一层仍未跑。此前 4.1.1 的 `check --strict`（0 error / 1 warning）是在本地旧快照 CLI 上跑的，**不能当作官方 main 的验证结果**。
 
-> ⚠️ **仍未在真实宿主中加载、打开面板保存并 Reload**，也未跑过官方 main 的 `check` / `lint` / `precheck` / `publish`。官方门禁需要完整 N.E.K.O 宿主、插件自己的独立 Git 仓库与 Market 平台，当前环境不具备；下文给出可复现清单，但**不冒充实测结果**。
+> ⚠️ **仍未在真实宿主中加载、打开面板保存并 Reload**，也未跑过官方 main 的 `check` / `lint` / `precheck` / `publish`。官方门禁需要完整 N.E.K.O 宿主、插件自己的独立 Git 仓库与 Market 平台，当前环境不具备；下文给出可复现清单，但**不冒充实测结果**。逐条阻塞事实、解除条件与审核决策见仓库根目录 [`../../../UNVERIFIED.md`](../../../UNVERIFIED.md)（待审）。
 
 ## 在真宿主上跑通一次（可复现清单）
 

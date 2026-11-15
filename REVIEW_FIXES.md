@@ -4,6 +4,8 @@
 >
 > 本文件保留旧版复核过程、「曾经错过什么」以及 §9 的版本代差勘误，仅供追溯与回滚。**不要依据本文件里的旧快照结论写插件代码**；当前规则请读 `neko-plugin-dev/SKILL.md`。
 >
+> 关于「哪些验证没做、为什么没做、需要什么条件」的逐条说明不在本文件，统一见 [`UNVERIFIED.md`](UNVERIFIED.md)（待审）。
+>
 > 4.3.0 收尾：GitHub [Issue #2](https://github.com/HMUG12/Project_Neko-plugin_skill/issues/2) 的 8 类残留问题已按官方 main 单一口径逐条处理，[Issue #1](https://github.com/HMUG12/Project_Neko-plugin_skill/issues/1) 的自动化规范已落成 `scripts/verify_skill.py` + CI；真跑证据与完整改动见 `CHANGELOG.md` 4.3.0 条目。本文件此后不再追加规则性结论。
 >
 > 本文件记录 `Project_Neko-plugin_skill-深审-1114193300.md` 中每个问题的处理结果与依据，供复核与回滚。

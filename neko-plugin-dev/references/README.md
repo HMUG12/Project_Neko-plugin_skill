@@ -148,7 +148,7 @@ uv run neko-plugin check my_plugin --strict
 
 `examples/minimal_plugin/` 是零第三方依赖的最小插件示例：`plugin.toml` + `pyproject.toml` + 主类（生命周期 / 双装饰器 / `@llm_tool`）+ `routers/notes.py`（继承 `PluginRouter`）+ `ui/settings.tsx`（可保存、无静默兜底）+ `tests/`。
 
-> ⚠️ **端到端真宿主验证仍未跑**：`examples/minimal_plugin/` 的 7 份支撑文件由官方 `generator.py` 的 `generate_plugin()` / `generate_repo_support_files()` **实际执行产出并逐字节一致**（含 `ruff.toml` 与 reusable workflow）；本机真跑 pinned `ruff==0.12.4` 两种入口均通过、`uvx pytest -q -c tests/pytest.ini tests` 11 passed、5 个 `.py` 编译通过。但**未在真实宿主中加载、打开面板保存并 Reload**，官方 main 的 `check` / `lint` / `precheck` / `publish` 也未实测。可复现清单见 [`../examples/minimal_plugin/README.md`](../examples/minimal_plugin/README.md)。
+> ⚠️ **端到端真宿主验证仍未跑**：`examples/minimal_plugin/` 的 7 份支撑文件由官方 `generator.py` 的 `generate_plugin()` / `generate_repo_support_files()` **实际执行产出并逐字节一致**（含 `ruff.toml` 与 reusable workflow）；本机真跑 pinned `ruff==0.12.4` 两种入口均通过、`uvx pytest -q -c tests/pytest.ini tests` 11 passed、5 个 `.py` 编译通过。但**未在真实宿主中加载、打开面板保存并 Reload**，官方 main 的 `check` / `lint` / `precheck` / `publish` 也未实测。可复现清单见 [`../examples/minimal_plugin/README.md`](../examples/minimal_plugin/README.md)；逐条阻塞原因、解除条件与审核决策见 [`../../UNVERIFIED.md`](../../UNVERIFIED.md)（待审）。
 
 ## 交叉引用速查
 

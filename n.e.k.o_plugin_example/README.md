@@ -44,6 +44,6 @@ uv run neko-plugin build <plugin_id> -o out/<plugin_id>.neko-plugin
 
 完整流程见 [OTHER.md](../OTHER.md) 与 [51 篇](../neko-plugin-dev/references/51-build-publish-and-market-review.md)。
 
-可复制的最小插件示例见技能包内的 `neko-plugin-dev/examples/minimal_plugin/`：其 7 份支撑文件由官方 `generator.py` 生成函数**实际执行产出并逐字节一致**，本机真跑 pinned `ruff==0.12.4`（两种入口）与 `uvx pytest -q -c tests/pytest.ini tests`（11 passed）均通过；但真宿主加载、面板保存与 Reload，以及官方 main 的 `check` / `lint` / `precheck` / `publish` 门禁尚未实测。
+可复制的最小插件示例见技能包内的 `neko-plugin-dev/examples/minimal_plugin/`：其 7 份支撑文件由官方 `generator.py` 生成函数**实际执行产出并逐字节一致**，本机真跑 pinned `ruff==0.12.4`（两种入口）与 `uvx pytest -q -c tests/pytest.ini tests`（11 passed）均通过；但真宿主加载、面板保存与 Reload，以及官方 main 的 `check` / `lint` / `precheck` / `publish` 门禁尚未实测。逐条阻塞原因与审核决策见根目录 [`../UNVERIFIED.md`](../UNVERIFIED.md)（待审）。
 
 本目录已列入 `.gitignore` 白名单与 README 仓库结构图。

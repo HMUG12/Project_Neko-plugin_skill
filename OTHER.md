@@ -76,4 +76,6 @@ uv run neko-plugin publish <id>
 
 > `check` 通过 ≠ 运行通过。真实宿主中加载、触发入口、打开面板保存、Reload 仍需单独验证。Market 的人工审核标准未在公开仓库披露。
 >
+> 以上未跑部分的逐条阻塞事实、前置条件与审核决策见根目录 [`UNVERIFIED.md`](UNVERIFIED.md)（待审）。
+>
 > 本文件是仓库说明文件之一，已列入 `.gitignore` 白名单与 README 仓库结构图。
