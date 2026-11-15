@@ -1,16 +1,15 @@
 ---
 name: "neko-plugin-dev"
-description: "N.E.K.O 插件开发指南。用于创建、修改、调试、打包与发布 N.E.K.O 插件：plugin.toml 契约、依赖声明（pyproject + vendor）、装饰器与生命周期、@plugin_entry 与 @ui.action 叠加、@llm_tool、PluginRouter、Hosted TSX 设置面板、store 持久化、push_message、chat cards / create_card、定时器、权限与部署；官方 neko-plugin CLI 构建方法（.neko-plugin / .neko-bundle）、发布工作流（init → check/lint/precheck → publish）、验证分层与 Market 首次审核 / Revision / 构建来源证据。含 20 条铁律、最小可用插件模板、易错 API 速查与 52 篇按需加载的 references。区分官方最新 main 与旧版快照双口径，事实以 N.E.K.O 主程序源码与 docs/plugins 为准；示例未在干净环境跑通端到端。当用户需要开发、修改、调试、打包、发布 N.E.K.O 插件或创建新插件时调用此技能。"
+description: "N.E.K.O 插件开发指南。用于创建、修改、调试、打包与发布 N.E.K.O 插件：plugin.toml 契约、依赖声明（pyproject + vendor）、装饰器与生命周期、@plugin_entry 与 @ui.action 叠加、@llm_tool、PluginRouter、Hosted TSX 设置面板、store 持久化、push_message、chat cards / create_card、定时器、权限与部署；官方 neko-plugin CLI 构建方法（.neko-plugin / .neko-bundle）、发布工作流（init → check/lint/precheck → publish）、验证分层与 Market 首次审核 / Revision / 构建来源证据。含 20 条铁律、最小可用插件模板、易错 API 速查与 52 篇按需加载的 references。以官方 N.E.K.O main 为唯一基线，事实依据为主程序源码与 docs/plugins；旧版修订记录仅存档、不参与规则判定。示例未在干净环境跑通端到端。当用户需要开发、修改、调试、打包、发布 N.E.K.O 插件或创建新插件时调用此技能。"
 ---
 
 # N.E.K.O 插件开发 Skill
 
-> **依据与边界 · 双口径（重要）**：
-> - **A · 官方最新基线**：`Project-N-E-K-O/N.E.K.O` 的 `main`（commit `acfbdbc`，2026-11-15 只读核对）。`51-build-publish-and-market-review.md`、`§7` 的构建／发布／验证／审核以此为准。
-> - **B · 本地旧快照**：工作区 `N.E.K.O-main (1)/N.E.K.O-main`（旧版 CLI，示例 `check --strict` 实测所用）。`§3`–`§5` 的多数 API 契约、29–38 号内部机制以此为准。
-> - 两版在 CLI 命令集、`push_message` 返回值与载荷上限、manifest 字段、chat cards 上存在**代差**；差异见 `§7` 对照表与 `REVIEW_FIXES.md §9`。**动手前先 `uv run neko-plugin --help` 确认目标版本的命令集**，不要凭记忆写 API。
+> **依据与边界 · 单一基线（重要）**：本技能包全部事实只按官方 `Project-N-E-K-O/N.E.K.O` 的 `main`（commit `acfbdbc`，2026-11-15 只读核对）判定，**不再并列任何旧快照口径**。`REVIEW_FIXES.md` / `CHANGELOG.md` 中关于旧版本的记录是历史存档，用来解释「曾经错过什么」，**不参与当前规则判定，也不要据此写插件代码**。
 >
-> **示例插件未在干净环境跑通端到端**，凡标注「示意」的代码都要用 `uv run neko-plugin check` 复验。第三方融合类文档（40–50）是方法论参考，不是官方 API 契约。带「内部机制」字样的篇章（29–38）描述宿主实现，可能随版本变化；写插件代码前以 `docs/plugins/` 与 `sdk/plugin/` 公开签名为准。
+> 动手前先 `uv run neko-plugin --help` 确认目标版本的命令集，不要凭记忆写 API；命令名以官方 CLI 注册清单为准。
+>
+> **示例插件未在干净环境跑通端到端**，凡标注「示意」的代码都要用 `uv run neko-plugin check` 复验。第三方融合类文档（40–50）是方法论参考，不是官方 API 契约。带「内部机制」字样的篇章（29–38）描述宿主实现，可能随版本变化；写插件代码前以 `docs/plugins/` 与 `plugin/sdk/plugin/` 公开签名为准。
 
 ---
 
@@ -34,9 +33,9 @@ description: "N.E.K.O 插件开发指南。用于创建、修改、调试、打�
 
 ## 1. 官方基线与工作边界
 
-- **用脚手架，不要手写目录**：`uv run neko-plugin init <plugin_id> --type plugin --name "My Plugin"` 生成标准骨架（官方新版自带 `.git/`、`ruff.toml`、`tests/`、`.github/workflows/verify.yml` + `release.yml`，见 `51` §2.2）；之后只在 `plugin/plugins/<plugin_id>/` 内改动。旧快照的 `--no-interactive`、`init-repo`、`add` 在新版已不存在。
-- **用公开 facade**：`plugin.sdk.plugin`、`plugin.sdk.extension`、`plugin.sdk.adapter`。**不要新增 `plugin.sdk.shared.*` 导入**（`20-plugin-router.md` 曾给出这种写法，已废弃）。
-- **三种包类型由 manifest 决定**：`plugin`（默认）、`extension`（须声明 `[plugin.host]`）、`adapter`（桥接外部协议/请求流；单纯调外部 HTTP 服务不算 adapter）。
+- **用脚手架，不要手写目录**：`uv run neko-plugin init <plugin_id> --type plugin --name "My Plugin"` 生成标准骨架（自带 `.git/`、`ruff.toml`、`tests/`、`.github/workflows/verify.yml` + `release.yml`，见 `51` §2.2）；之后只在 `plugin/plugins/<plugin_id>/` 内改动。CLI 没有 `add` 顶层命令，Python 依赖写进 `pyproject.toml` 后直接 `sync <id> --clean`。
+- **用公开 facade**：`plugin.sdk.plugin`、`plugin.sdk.adapter`。`plugin.sdk.extension` 已随 Extension 包类型移除、无兼容路径（`docs/plugins/migration-v0.9.md:15`）。**不要新增 `plugin.sdk.shared.*` 导入**（`20-plugin-router.md` 曾给出这种写法，已废弃）。
+- **两种包类型由 manifest 决定**：`plugin`（默认）、`adapter`（桥接外部协议/请求流；单纯调外部 HTTP 服务不算 adapter）。`plugin/_types/plugin_types.py:8` 定义 `PluginType = Literal["plugin", "adapter"]`；`extension` 类型与 `[plugin.host]` 已被移除，`schema.py:233` 的 `reject_removed_host_config` 会显式拒绝。
 - **身份一致**：目录名、`[plugin].id`、`[plugin].entry`、主类名表达同一个插件概念；打包与生产安装要求对齐。
 - **运行时触发的 `@plugin_entry` 必须是 `async def`**；`plugin_runtime.auto_start = false` 表示手动启动，不是「禁用」或「导入安全」。
 - **改平台源码（docs/tests/宿主）需要用户明确确认**，插件开发默认只在插件工作区内写文件。
@@ -74,16 +73,16 @@ plugin/plugins/<plugin_id>/
 8. **权限默认 `false`**，按最小权限逐项授权。
 9. **AI 路径参数要求绝对路径**，拒绝相对路径并在错误信息中引导。
 10. **磁盘 I/O 用 `asyncio.to_thread`**，不阻塞事件循环。
-11. **依赖分两条通道**：`[plugin].dependencies` 是**插件 ID 字符串列表**（运行时 schema 另有一套对象数组口径，见 §3）；Python 包写在 `pyproject.toml [project].dependencies`，再用 `neko-plugin sync <id> --clean` 装进 `vendor/`。**不会自动安装**，官方新版**没有 `add` 命令**（详见 §3、§7）。
+11. **依赖分两条通道**：`[plugin].dependencies` 是**插件 ID 字符串列表**（CLI 校验口径见 `validate_cmd.py:200`）；Python 包写在 `pyproject.toml [project].dependencies`，再用 `neko-plugin sync <id> --clean` 装进 `vendor/`。**不会自动安装**，CLI **没有 `add` 命令**（详见 §3、§7）。
 12. **`@ui.action` 必须与 `@plugin_entry` 叠加**：宿主只从已注册的 entry 收集 UI action，裸 `@ui.action` 不会生成可调用按钮。
 13. **`@llm_tool` 用 `*,` 强制 keyword-only**，参数面要窄。
 14. **Router 在 `__init__` 中注册**：`self.include_router(...)` 放在 `super().__init__(ctx)` 之后、`__init__` 返回之前；Router 类必须继承 `PluginRouter`。
 15. **第三方库惰性导入 + 错误缓存**：`try/except ImportError` 失败后缓存错误，不反复重试 import。
 16. **跨插件调用用 `self.plugins.call_entry`**，不要直接 import 其他插件的类。
 17. **启动期不要跨插件调用**：`startup` 时其他插件可能尚未就绪；需要时放到首个工作入口里并做失败回退。官方**没有** `on_init` / `on_start` 这类钩子。
-18. **推消息用 `parts`，不要 `await`**：`push_message` 是同步方法；旧版返回 `None`，**官方新版返回 `PushMessageResult`（含 `submitted` / `reason`）**——判断有无回执前先确认版本。旧参 `content=` 会触发 `DeprecationWarning`。二进制媒体用 `image` / `audio` / `video` part 的 `data`；新版另有 `await ctx.images.upload()` 处理大图、`await ctx.create_card()` 发 HTML 卡片（详见 §5、§7）。
+18. **推消息用 `parts`，不要 `await`，要判回执**：`push_message` 是同步方法，返回 `PushMessageResult`（`submitted` / `reason`）；`submitted=True` 只表示本地已提交，不是送达保证。旧参 `content=` 等 v1 字段是 compatibility-only，会触发静态检查与运行时警告。二进制媒体用 `image` / `audio` / `video` part 的 `data`；大图用 `await ctx.images.upload()`，HTML 卡片用 `await ctx.create_card()`（详见 §5、`30` 篇）。
 19. **Router entry 避免 ID 冲突**：用 `prefix` 或不同 `entry_id`，不是「所有 Router 必须设 prefix」。
-20. **Bus 是只读门面**：用可重放查询链 `get().filter().sort().limit()`；`get_recent()` / `reload()` / `union()` / `intersect()` / `difference()` / `bus.emit()` 均不存在，它不是发布订阅总线。旧快照有 5 个命名空间，**官方新版新增第 6 个 `bus.frames`**（`plugin/core/bus/frames.py`，见 §7）。
+20. **Bus 是只读门面**：用可重放查询链 `get().filter().sort().limit()`；`get_recent()` / `reload()` / `union()` / `intersect()` / `difference()` / `bus.emit()` 均不存在，它不是发布订阅总线。共 6 个命名空间，含 `bus.frames`（`plugin/core/bus/frames.py`，`docs/plugins/sdk-reference.md` §Frames）。
 
 ---
 
@@ -96,7 +95,7 @@ name = "我的插件"
 description = "给 AI 看的功能描述"
 version = "0.1.0"
 entry = "plugin.plugins.my_plugin:MyPlugin"
-type = "plugin"                  # plugin | extension | adapter
+type = "plugin"                  # plugin | adapter（extension 已移除）
 keywords = ["^查.*天气$", "weather"]   # 正则，只用于粗筛候选
 dependencies = ["other_plugin_id"]     # 插件 ID 字符串列表；无依赖就省略
 
@@ -113,7 +112,7 @@ title = "设置"
 context = "settings"
 ```
 
-**依赖的正确流程**（官方 `neko_plugin_cli/core/dependencies.py`）：
+**依赖的正确流程**（官方 `neko_plugin_cli/commands/validate_cmd.py:200` 校验、`templates/generator.py:520` 生成 `pyproject.toml`）：
 
 ```toml
 # plugin.toml —— 只声明插件间依赖
@@ -125,11 +124,11 @@ dependencies = ["httpx>=0.27"]
 ```
 
 ```bash
-# 官方 main（2026-11-15）：手写 pyproject.toml 后直接 sync，没有 add 命令
+# 手写 pyproject.toml 后直接 sync；CLI 没有 add 顶层命令
 uv run neko-plugin sync <plugin_id> --clean        # 从 pyproject.toml 重装依赖进 vendor/
 uv run neko-plugin check <plugin_id> --strict       # 缺支撑文件 / vendor 不满足会报错
-
-# 旧快照 CLI 才有：neko-plugin add <plugin_id> "httpx>=0.27"（写 pyproject + 装 vendor）
+uv run neko-plugin lint <plugin_id>                 # pinned ruff 0.12.4
+uv run neko-plugin precheck <plugin_id>             # lint → sync --clean → check -r
 ```
 
 要避免的写法：
@@ -141,9 +140,9 @@ openai = ">=1.0.0"
 ```
 
 - `keywords` 是**正则表达式**，用于粗筛候选；非法正则会退化为字面子串匹配且不保证报错，注意转义。
-- **两套口径不一致**：运行时 `plugin/config/schema.py:103` 把 `dependencies` 定义为 `List[PluginDependencySchema]`（对象数组），而打包 CLI `neko_plugin_cli/core/dependencies.py:75` 要求插件 ID 字符串列表。**写插件时以 CLI 校验口径为准**（字符串列表），高级结构化依赖用 `[plugin.dependency]` / `[[plugin.dependency]]`。
-- 官方**不会**在插件安装时自动 pip 安装依赖；不支持 `requirements.txt`；`extension` 类型不得声明外部 Python 依赖；缺依赖时代码要做惰性导入与友好报错。
-- 字段全集以 `plugin/config/schema.py`、`plugin/core/ui_manifest.py`、`docs/plugins/plugin-toml.md` 为准。**版本代差**：旧快照的 `PluginSectionSchema` 没有 `install` / `models`；**官方 main 的 `plugin/config/schema.py:227-228` 明确有 `install: Optional[PluginInstallSchema]` 与 `models: Dict[PluginModelUsageId, PluginModelRequirementSchema]`**，对应 `[plugin.install]`（宿主管理的安装动作）和 `[plugin.models.<usage_id>]`（模型用途声明）。审查报告把它们列为「缺失项」在旧快照成立、在新版**不成立**（见 `REVIEW_FIXES.md §9`）。同理 `[plugin.host]` 在新版 `schema.py:233-236` 已被 `reject_removed_host_config` 显式拒绝——写之前务必确认目标版本。
+- **写 manifest 只认 CLI 校验口径**：`validate_cmd.py:200` 的 `_check_plugin_dependency_id_list` 要求 `[plugin].dependencies` 是**插件 ID 字符串列表**。`plugin/config/schema.py:229` 的 `Optional[List[PluginDependencySchema]]` 是宿主运行时内部模型，不是给插件作者照抄的 manifest 写法；把它写成对象数组会在 CLI 校验阶段失败。
+- 官方**不会**在插件安装时自动 pip 安装依赖；不支持 `requirements.txt`；缺依赖时代码要做惰性导入与友好报错。Python 包只能走 `pyproject.toml` → `sync --clean` → `vendor/`。
+- 字段全集以 `plugin/config/schema.py`、`plugin/core/ui_manifest.py`、`docs/plugins/plugin-toml.md` 为准。`schema.py:227-228` 声明了 `install: Optional[PluginInstallSchema]` 与 `models: Dict[PluginModelUsageId, PluginModelRequirementSchema]`，对应 `[plugin.install]`（宿主管理的安装动作）和 `[plugin.models.<usage_id>]`（模型用途声明）。反向地，`[plugin.host]` 在 `schema.py:233` 被 `reject_removed_host_config` **显式拒绝**，不要写。
 - `check --strict` 会把「缺仓库支撑文件（pyproject/tests/README 等）」按错误处理，所以示例/新插件要补齐支撑文件。
 
 ---
@@ -156,8 +155,10 @@ import asyncio
 
 from plugin.sdk.plugin import (
     NekoPluginBase, neko_plugin, plugin_entry, lifecycle, timer_interval,
-    ui, llm_tool, Ok, Err, SdkError, unwrap, unwrap_or,
+    ui, llm_tool, Ok, Err, SdkError, unwrap_or,
 )
+
+DEFAULT_GREETING = "你好"
 
 
 @neko_plugin
@@ -166,10 +167,19 @@ class MyPlugin(NekoPluginBase):
         super().__init__(ctx)
         self._counter = 0
         self._frozen = False
+        self._greeting = DEFAULT_GREETING
+
+    # ── 配置：从运行时 TOML 读回，Reload 后不丢 ──
+    async def _reload_config(self):
+        cfg = await self.config.dump(timeout=5.0)
+        section = cfg.get("my_plugin", {}) if isinstance(cfg, dict) else {}
+        value = section.get("greeting", DEFAULT_GREETING) if isinstance(section, dict) else DEFAULT_GREETING
+        self._greeting = str(value)
 
     # ── 生命周期：只有这 6 个 id，且用关键字参数 ──
     @lifecycle(id="startup")
     async def on_startup(self, **_):
+        await self._reload_config()
         self._counter = unwrap_or(await self.store.get("counter"), 0)
         return Ok({"status": "ready"})
 
@@ -179,11 +189,10 @@ class MyPlugin(NekoPluginBase):
         return Ok({"status": "stopped"})
 
     @lifecycle(id="config_change")
-    async def on_config_change(self, *, old_config=None, new_config=None, mode=None, **_):
-        # 框架以 kwargs 注入；不要写成必填位置参数
+    async def on_config_change(self, **_):
+        await self._reload_config()
         return Ok({"status": "reloaded"})
 
-    # reload / freeze / unfreeze 仅作兼容保留；管理面板的 Reload 是重启进程
     @lifecycle(id="freeze")
     async def on_freeze(self, **_):
         self._frozen = True
@@ -205,18 +214,20 @@ class MyPlugin(NekoPluginBase):
         self._counter += 1
         return Ok({"count": self._counter})
 
-    # ── UI action：必须与 @plugin_entry 叠加 ──
+    # ── UI action：必须与 @plugin_entry 叠加；保存要落盘 ──
     @ui.action(label="保存设置", tone="primary", refresh_context=True)
     @plugin_entry(id="save_settings", name="保存设置", description="保存面板配置")
     async def save_settings(self, config: dict | None = None, **_):
         if not isinstance(config, dict):
             return Err(SdkError("config 必须是对象"))
-        await self.config.update(config)   # 具体方法名以目标 SDK 为准
-        return Ok({"status": "saved"})
+        await self.config.update({"my_plugin": config})   # 只改内存会在 Reload 后丢失
+        await self._reload_config()
+        return Ok({"status": "saved", "greeting": self._greeting})
 
     @ui.context(id="settings")
     async def settings_context(self):
-        return {"counter": self._counter, "frozen": self._frozen}
+        return {"config": {"greeting": self._greeting},
+                "counter": self._counter, "frozen": self._frozen}
 
     # ── 定时器：必须 async def，宿主执行 asyncio.run(fn()) ──
     @timer_interval(id="tick", seconds=60, name="定时整理", auto_start=True)
@@ -229,19 +240,21 @@ class MyPlugin(NekoPluginBase):
     def _blocking_work(self):
         pass
 
-    # ── push_message 是同步方法，不要 await ──
+    # ── push_message：同步方法，返回 PushMessageResult ──
     def notify(self, text: str):
-        receipt = self.ctx.push_message(
+        result = self.ctx.push_message(
             visibility=["chat"],
             ai_behavior="blind",
             parts=[{"type": "text", "text": text}],
             source="my_plugin",
             priority=0,
         )
-        return receipt
+        if not result["submitted"]:
+            return Err(SdkError(f"push_message 未提交: {result.get('reason')}"))
+        return Ok({"status": "submitted"})
 ```
 
-> 模板里的 `config.update` / `store.set` 等方法名请以目标版本的 `sdk/plugin/base.py` 与 `docs/plugins/sdk-reference.md` 复核；本节重点是正确的**调用形态**（异步入口、同步 push、双装饰器、依赖通道）。
+> 配置读写参照官方 `plugin/plugins/lifekit/__init__.py` 的公开用法（`config.dump(timeout=...)` / `config.update({...})`）；本节重点是正确的**调用形态**（异步入口、同步 push 并判回执、双装饰器、配置落盘、依赖通道）。可复制的完整骨架见 `examples/minimal_plugin/`。
 
 ---
 
@@ -252,9 +265,9 @@ class MyPlugin(NekoPluginBase):
 | `@lifecycle` | 只允许 `startup / shutdown / reload / freeze / unfreeze / config_change`，用 `id=` 关键字 | `@lifecycle("on_init")`、位置参数 |
 | `config_change` | 框架以 kwargs 传 `old_config / new_config / mode` | 写成必填位置参数或声称「框架不传」 |
 | Reload | 管理面板的 Reload 是**重启进程**（shutdown → startup）；`reload` 钩子仅为兼容保留 | 依赖 `on_reload` 做同进程热更新 |
-| `@timer_interval` | 必须 `async def`，宿主在独立线程里 `asyncio.run(fn())`；`docs/plugins/decorators.md` 的同步 def 示例与实现冲突，不要照抄 | `def` + `new_event_loop()` + `run_until_complete()` |
-| `push_message` | **同步**方法（不要 `await`）；v2 用 `parts`；v1 的 `content=` 等参数会告警。**返回值有代差**：旧快照 `-> None`；官方 main `-> PushMessageResult`，含 `submitted` 与 `reason`（`backpressure` / `transport_error` / `transport_unavailable` / `payload_too_large`） | `await ctx.push_message(...)`、`content=` 当快捷用法 |
-| `push_message` 载荷 | **旧快照** 256 KiB；**官方 main** `MESSAGE_PLANE_PAYLOAD_MAX_BYTES = 512 * 1024`（`plugin/settings.py:588`，`NEKO_MESSAGE_PLANE_PAYLOAD_MAX_BYTES` 可调）。`submitted=True` **只表示本地已提交**，不代表宿主已消费或已显示；`{MASTER_NAME}` / `{LANLAN_NAME}` 由宿主展开。新版大图用 `await ctx.images.upload(bytes, mime=...)`（源 32 MiB / 归一化 8 MiB 上限，失败抛异常），chat 侧另有每推 8 图 / 8 MiB 上限 | 把 `submitted=True` 当成送达保证、把大文件塞 base64、在旧版里调用 `images.upload()` |
+| `@timer_interval` | 必须 `async def`，宿主在独立线程里 `asyncio.run(fn())`；`docs/plugins/decorators.md:124` 的 `cleanup` 也是 `async def` | `def` + `new_event_loop()` + `run_until_complete()` |
+| `push_message` | **同步**方法（不要 `await`）；v2 用 `parts`；返回 `PushMessageResult`，含 `submitted` 与 `reason`（`backpressure` / `transport_error` / `transport_unavailable` / `payload_too_large`）。v1 的 `content=` 等字段是 compatibility-only，必须迁移 | `await ctx.push_message(...)`、`content=` 当快捷用法、忽略回执 |
+| `push_message` 载荷 | `MESSAGE_PLANE_PAYLOAD_MAX_BYTES = 512 * 1024`（`plugin/settings.py:588`，`NEKO_MESSAGE_PLANE_PAYLOAD_MAX_BYTES` 可调）；超限**本地整条拒绝**并返回 `reason=payload_too_large`。`submitted=True` **只表示本地已提交**，不代表宿主已消费或已显示；`{MASTER_NAME}` / `{LANLAN_NAME}` 由宿主展开。大图用 `await ctx.images.upload(bytes, mime=...)`（源 32 MiB / 归一化 8 MiB 上限，失败抛异常），chat 侧另有每推 8 图 / 8 MiB 上限 | 把 `submitted=True` 当成送达保证、把大文件塞 base64 |
 | 媒体 part | `image` / `audio` / `video` 支持 `data`（转 `binary_base64`）或 `url`；`ui_action` 的 `media_play_url` 可带 url。AI 路径对媒体 part 的支持以目标版本实测为准，别假设任意外部 URL 都可用 | 把 `file://` 当成通用通道、断言宿主一定会拦截或放行外部 URL |
 | `visibility` / `ai_behavior` | 两轴正交：`["chat" \| "hud"]` × `respond / read / blind` | 把 priority 臆造成 info/warning/紧急分档 |
 | `priority` | `0–10` 整数，默认 `0`；官方未定义语义分档 | 自拟 `0-2 低 / 9-10 紧急` |
@@ -263,8 +276,8 @@ class MyPlugin(NekoPluginBase):
 | `@ui.action` | 只从已注册 entry 收集，必须与 `@plugin_entry` 叠加 | 裸 `@ui.action`、前端静默兜底按钮 |
 | `_ctx` | 默认不传；需要时声明 `_ctx` 或 `**_`，`llm_tool(reply_tail=True)` 必须能接收 | 断言「框架绝不传任何上下文」 |
 | Router | 自定义 Router 必须继承 `PluginRouter`；`@llm_tool` 只扫插件主类 | 裸类 + 在 Router 里写 `@llm_tool` |
-| Bus | 只读门面，可重放查询链；旧快照 5 个命名空间，官方 main 另有第 6 个 `bus.frames`（`plugin/core/bus/frames.py`，`docs/plugins/sdk-reference.md` §Frames） | `bus.emit()`、`get_recent()`、把 frames 当日志/队列 |
-| HTML chat cards（**仅新版**） | `await ctx.create_card(html=, summary=, css=, actions=)` → `card.update(...)`；`create_view()` 出 AgentHUD 标签页；`ChatCard` / `CardSubmissionError` / `PluginView` 由 `plugin.sdk.plugin` 导出。需 `@ui.action` + `@plugin_entry` 叠加处理 `data-neko-action`。见 `docs/plugins/chat-cards.md` | 旧版照抄这些 API、把 card 当持久化对象、假设按钮脚本会执行 |
+| Bus | 只读门面，可重放查询链；共 6 个命名空间，含第 6 个 `bus.frames`（`plugin/core/bus/frames.py`，`docs/plugins/sdk-reference.md` §Frames） | `bus.emit()`、`get_recent()`、把 frames 当日志/队列 |
+| HTML chat cards | `await ctx.create_card(html=, summary=, css=, actions=)` → `card.update(...)`；`create_view()` 出 AgentHUD 标签页；`ChatCard` / `CardSubmissionError` / `PluginView` 由 `plugin.sdk.plugin` 导出。需 `@ui.action` + `@plugin_entry` 叠加处理 `data-neko-action`。见 `docs/plugins/chat-cards.md` | 旧版照抄这些 API、把 card 当持久化对象、假设按钮脚本会执行 |
 
 ---
 
@@ -286,27 +299,27 @@ class MyPlugin(NekoPluginBase):
 
 ---
 
-## 7. 构建、官方工作流与验证审核（双口径 · 2026-11-15 核对）
+## 7. 构建、官方工作流与验证审核（官方 main · 2026-11-15 核对）
 
 > **完整版见 [`51-build-publish-and-market-review.md`](references/51-build-publish-and-market-review.md)**。本节是速查；命令集以 `uv run neko-plugin --help` 为准。
 
-### 7.1 两版 CLI 对照（照抄前先确认版本）
+### 7.1 官方命令集（照抄前先 `uv run neko-plugin --help` 确认）
 
-| 用途 | 官方 main `acfbdbc`（2026-11-15） | 本地旧快照 |
-|---|---|---|
-| 建骨架 | `init <id> --type plugin --name "..."` | `init ... --no-interactive` |
-| 补支撑文件 | `setup-repo <id> [--github-actions] [--upgrade-github-actions] [--dry-run]` | `setup-repo <plugin>` |
-| 建 GitHub 仓库 | `create-repo <id>`（用 gh） | `init-repo <id>` |
-| 依赖 | 手写 `pyproject.toml` → `sync <id> --clean` | `add <id> "<pkg>"` + `sync <id>` |
-| 检查 | `check` / `-s` / `-r` / `-r --market-release` | `check --strict / --release / --market-release` |
-| 固定 lint | `lint <id>` | 无 |
-| 本地 CI 门禁 | `precheck <id> [--json]`（lint → sync --clean → check -r） | 无 |
-| 包检查 | `check -r` 内含 inspect + payload hash | `inspect <pkg>` / `verify <pkg>` |
-| 构建 | `build <id> [-o] [-t] [--all] [--bundle]` | `build <id>` |
-| 分析 | `analyze <id>...` | `analyze` |
-| **发布** | **`publish <id>` / `publish github <id>` / `publish market <url>`** | 无 |
+| 用途 | 命令 |
+|---|---|
+| 建骨架 | `init <id> --type plugin --name "..."` |
+| 补支撑文件 | `setup-repo <id> [--github-actions] [--upgrade-github-actions] [--dry-run]` |
+| 建 GitHub 仓库 | `create-repo <id>`（用 gh） |
+| 依赖 | 手写 `pyproject.toml` → `sync <id> --clean` |
+| 检查 | `check` / `-s` / `-r` / `-r --market-release` |
+| 固定 lint | `lint <id>` |
+| 本地 CI 门禁 | `precheck <id> [--json]`（lint → sync --clean → check -r） |
+| 包检查 | `check -r` 内含 inspect + payload hash 验证 |
+| 构建 | `build <id> [-o] [-t] [--all] [--bundle]` |
+| 分析 | `analyze <id>...` |
+| **发布** | **`publish <id>` / `publish github <id>` / `publish market <url>`** |
 
-**两版都成立**：`release_cmd.py` / `validate_cmd.py` 是内部实现模块、`deps` 不是顶层命令（`deps_cmd.py` 注册 `sync`）、没有 `release` 顶层命令。`init setup-repo` / `init create-repo` 二级写法也不存在——它们都是顶层命令。
+**命令边界**：`release_cmd.py` / `validate_cmd.py` 是内部实现模块；`deps` 不是顶层命令（`deps_cmd.py` 注册的是 `sync`）；没有 `release`、也没有 `add` 顶层命令；`init setup-repo` / `init create-repo` 这类二级写法不存在——它们都是顶层命令。`install` 只是兼容命令，拒绝直接写运行时目录。
 
 ### 7.2 构建方法（官方 main）
 
@@ -348,23 +361,23 @@ uv run neko-plugin publish hello_world         # 检查→打 v<version> tag→R
 - **证据链**：`market-evidence.json` 记录 `source_commit` / `workflow_run_id` / `neko_commit` / 包 `sha256` / `payload_hash`；release workflow 拆成 `release → evidence → attest` 三 job，只有 `attest` 有 `id-token/attestations: write` 且全用 40 位 SHA pinned actions，防止插件代码篡改证据。Release 三资产：`<id>.neko-plugin`、`<id>.market-release-check.txt`、`market-evidence.json`。
 - **人工审核标准不在公开仓库**，只能覆盖可查到的自动门禁与流程语义。
 
-### 7.6 版本代差：早期审查报告的「误判」多数实为新版事实
+### 7.6 官方 main 已确认的能力（不要再当成幻觉）
 
-上一轮以本地旧快照判为「不存在」的下列条目，在**官方 main 中真实存在**（依据见 `REVIEW_FIXES.md §9`）：
+以下条目均已在官方 main 源码中确认存在（核对记录见 `REVIEW_FIXES.md §9` 存档）：
 
 | 条目 | 官方 main 事实 |
 |---|---|
 | `submitted` 回执 / `payload_too_large` | `push_message(...) -> PushMessageResult`；`docs/plugins/push-message.md` 明确 `submitted` 与 `reason` |
-| 512 KiB 上限 | `plugin/settings.py:588` 默认 `512 * 1024`（旧快照 256 KiB） |
+| 512 KiB 上限 | `plugin/settings.py:588` 默认 `512 * 1024` |
 | `ctx.images.upload()` | `docs/plugins/push-message.md` §Image upload，源 32 MiB / 归一化 8 MiB |
 | `ChatCard` / HTML chat cards | `plugin/sdk/shared/core/cards.py`；`ChatCard` / `CardSubmissionError` / `PluginView` 由 `plugin.sdk.plugin` 导出 |
 | `bus.frames` 第 6 条总线 | `plugin/core/bus/frames.py`、`docs/plugins/sdk-reference.md` §Frames |
 | `[plugin.install]` / `[plugin.models]` | `plugin/config/schema.py:227-228` 的 `PluginInstallSchema` / `PluginModelRequirementSchema` |
-| `publish` 顶层命令 | `cli.py` 注册 `publish_cmd.register(...)`，三种模式见 §7.1 |
-| `docs/plugins/push-message.md` | 官方仓库有该文件（约 24K 字符）；旧快照没有 |
-| `setup-repo --upgrade-github-actions` / `create-repo` | 均为官方新版真实命令 |
+| `publish` 顶层命令 | `cli.py` 注册 `publish_cmd.register(...)`，三种模式见 §7.1；`init` 生成物见 `generator.py:174-176` |
+| `docs/plugins/push-message.md` | 官方完整规范（348 行），含回执、图片上传与预算表 |
+| `setup-repo --upgrade-github-actions` / `create-repo` | `cli.py` 注册的顶层命令选项 |
 
-**仍然成立、不要写进文档的**：`bus.emit()` / `get_recent()` / `union()` 等只读门面之外的 API、`on_init` / `on_start` / `on_stop` 等虚构生命周期钩子、`[plugin.dependencies]` 内联表、`deps` / `release` 顶层子命令、ZMQ 是 PAIR/JSON、把 `ChatCard` 当成持久化对象或可执行 JS 的运行时。**`31` 号写「五条总线」只适用于旧快照**，新版为六条。
+**仍然成立、不要写进文档的**：`bus.emit()` / `get_recent()` / `union()` 等只读门面之外的 API、`on_init` / `on_start` / `on_stop` 等虚构生命周期钩子、`[plugin.dependencies]` 内联表、`deps` / `release` / `add` 顶层子命令、把 ZMQ 说成 PAIR/JSON/12 种命令、把 `ChatCard` 当成持久化对象或可执行 JS 的运行时。`30` / `31` / `37` 三篇已按官方 main 重写。
 
 > 官方仓库自带 `.agent/skills/neko-plugin/`（`core-plugin-contract.md`、`hosted-ui-authoring.md`、`plugin-checks-and-tests.md`、`plugin-creation-workflow.md` 等），**优先级高于本技能的任何推测性描述**。
 
@@ -394,22 +407,22 @@ uv run neko-plugin publish hello_world         # 检查→打 v<version> tag→R
 
 **工程与外部融合**：`40` 工程纪律 · `41` UI 设计质量 · `42` 网页数据集成 · `43` 安全加固 · `44` 本地插件架构 · `45` 融合速查 · `46` 持久记忆 · `47` LLM 路由 · `48` 提示词压缩/PII · `49` 角色状态机 · `50` 市场插件逆向
 
-**官方构建 / 发布 / 审核（新版基线）**：`51` 构建方法（`.neko-plugin` 包格式、`build`）、官方工作流（`init → lint/precheck → publish`）、验证分层（`check -s/-r/--market-release`、CI 门禁、安全扫描）、Market 首次审核 / Revision / 构建来源证据链、两版 CLI 对照
+**官方构建 / 发布 / 审核**：`51` 构建方法（`.neko-plugin` 包格式、`build`）、官方工作流（`init → lint/precheck → publish`）、验证分层（`check -s/-r/--market-release`、CI 门禁、安全扫描）、Market 首次审核 / Revision / 构建来源证据链、官方命令集
 
-> `README.md`（references 目录下）是逐篇索引与「何时需要」指引。**29–38 曾包含基于旧版本逆向的虚构 API，已按旧快照源码重写**；其中 30/31 等篇的事实只适用于旧快照，新版差异见本文 §7.6 与 `51` 篇。`50` 声称「全部带 file:line 出处」，但其依据的 `_crawled_repos/` 不在仓库内，无法复核，请当作经验性材料。
+> `README.md`（references 目录下）是逐篇索引与「何时需要」指引。**29–38 是宿主内部机制说明，全部按官方 main 源码核对**；`30` / `31` / `37` 已整篇按官方 main 重写。`50` 声称「全部带 file:line 出处」，但其依据的 `_crawled_repos/` 不在仓库内，无法复核，请当作经验性材料。
 
 ---
 
 ## 10. 发布前检查清单
 
-**A. 代码与清单（两版通用）**
+**A. 代码与清单**
 ```
 ☐ 目录名 / id / entry / 主类名一致；无 BOM
 ☐ 依赖：[plugin].dependencies 是插件 ID 列表；Python 包在 pyproject.toml 且 vendor/ 已 sync --clean
 ☐ 所有 @plugin_entry / @ui.action / 定时器都是 async def（定时器无 new_event_loop）
 ☐ @ui.action 都与 @plugin_entry 叠加；面板有保存入口且声明了所需权限
 ☐ push_message 没有 await、用 parts、未用 content=、未硬编码称呼
-☐ 若目标版本为官方 main：submitted 回执按「仅本地已提交」处理，不当中送达保证
+☐ push_message 判了 submitted 回执，且按「仅本地已提交」处理，不当中送达保证
 ☐ store 取值已 unwrap；Bus 只用只读查询链（新版可用 bus.frames，但仍是只读）
 ☐ keywords 是合法正则；权限默认 false
 ☐ 运行时配置明文 TOML，密钥不进源码仓库、不进日志
@@ -438,17 +451,19 @@ uv run neko-plugin publish hello_world         # 检查→打 v<version> tag→R
 ☐ Market 版本列表出现该版本，stable latest 已更新
 ```
 
-> 旧快照没有 `publish` / `lint` / `precheck`，B/C 两组的命令需换成对应旧版流程；`examples/minimal_plugin/` 的 `check --strict` 实测只覆盖 A 组静态部分。
+> `examples/minimal_plugin/` 的静态契约测试只覆盖 A 组的静态部分；B 组的真宿主加载与 C 组的 Market 上架必须在目标环境里实跑，不能用文档结论代替。
 
 ---
 
 ## 11. 未验证与免责
 
 - `references/` 中的 Python 代码块是摘录片段（方法体单独成块、签名用 `...` 占位），**不是可独立运行的模块**；可复制的完整骨架只有 `examples/minimal_plugin/`。
-- 本技能的示例插件已通过**本地旧快照 CLI** 的 `neko-plugin check --strict`（0 error / 1 个「非独立插件仓库」预期 warning），但**未在真实宿主中加载、打开面板并 Reload**，也不等于通过官方 main 的新门禁（`lint` / `precheck` / `publish`），因此仍不算端到端验证。`30` / `31` / `37` 等内部机制描述依据的是本地旧快照，官方 main 已有代差（见 §7.6）。
+- 本技能示例的**本机真跑**部分：官方 main `generator.py` 的 `generate_plugin()` / `generate_repo_support_files()` 已实际执行，7 份支撑文件与产出字节一致；pinned `ruff==0.12.4` 两种入口（本地 `--config ruff.toml` 与官方 CI `--isolated` 原命令）均通过；`uvx pytest -q -c tests/pytest.ini tests` 11 项通过；5 个 `.py` 编译通过。静态契约测试、语法与链接检查也通过。4.1.1 曾在**本地旧快照** CLI 上跑过 `check --strict`（0 error / 1 预期 warning），**不能当作官方 main 的验证结果**。
+- 但**未在真实宿主中加载、打开面板保存并 Reload**，也未跑过官方 main 的 `check` / `lint` / `precheck` / `publish`，因此仍不算端到端验证。可复现的真宿主验证清单见 `examples/minimal_plugin/README.md`。
 - `42` 中的 firecrawl 依赖名、`fc.scrape(...)` 的位置参数与 `doc.metadata_dict` 是否符合当前 PyPI 版本**未核实**；示例已改为零外部依赖版本以免误导。
 - `41` 提到的 `Input type="range"` 能否替代 Slider 未核实；`README.md` 曾宣传 `Slider`，按 `03-ui-settings.md` 的组件表为准。
 - 外部 skill 片段（40–50）无逐条许可/署名说明，引用时请自行确认来源许可。
 - 31 个市场插件的统计与「全部声明同样 SDK 区间」未复核。
-- 遇到与本文冲突的官方源码/文档，**一律以官方为准**并回填到本技能；并注意「官方」要锁定到**具体 commit 的目标版本**，不要用 A 版源码否定 B 版文档（§7.6、REVIEW_FIXES §9 即为这类基线错误的纠偏记录）。
+- 遇到与本文冲突的官方源码/文档，**一律以官方为准**并回填到本技能；核对时锁定到具体 commit（本版为 `acfbdbc`）。`REVIEW_FIXES.md` 与 `CHANGELOG.md` 是历史存档，不作为规则来源。
+- **真机验证是当前最大缺口**：`init → check/lint/precheck → 宿主加载 → 面板保存 → Reload → publish` 全链路需要完整 N.E.K.O 宿主与 Market 平台。4.3.0 已把「官方 init 生成器实际执行 + pinned ruff + pytest」这三层在本机跑通（见上），但文档、静态契约测试、lint 都**不能替代一次真实宿主运行**，本技能包不声称已完成。
 - 官方 `publish → GitHub Release → Market 上架` 全链路、`NEKO_PLUGIN_MARKET_SECURITY_CHECKS=1` 的扫描行为、Market 人工审核标准均**未在真机验证**；人工审核标准未在公开仓库披露。

@@ -56,24 +56,25 @@ class MemoryPlugin(NekoPluginBase):
 
     @lifecycle(id="startup")
     async def on_startup(self, **_):
-        raw = await self.store.get("mem_index", "{}")
+        # store.get 返回 Result，必须 unwrap_or；第二个参数不是默认值
+        raw = unwrap_or(await self.store.get("mem_index"), "{}")
         self._idx = json.loads(raw) if isinstance(raw, str) else (raw or {})
         return Ok({"status": "ready"})
 
-    def _save_index(self):
-        # KV 全量持久化，见 35-store-database-internals
-        self.store.set("mem_index", json.dumps(self._idx))
+    async def _save_index(self):
+        # store.set 是协程，必须 await（见 35-store-database-internals）
+        await self.store.set("mem_index", json.dumps(self._idx))
 
-    def _encode(self, text, tags, mtype="episodic"):
+    async def _encode(self, text, tags, mtype="episodic"):
         mid = f"{mtype}-{uuid.uuid4().hex[:8]}"
         with self._lock:
             self._idx[mid] = {"type": mtype, "importance": 0.6,
                               "tags": tags, "summary": text[:200], "archived": False}
-        self._save_index()
+        await self._save_index()
         return mid
 
     def _consolidate(self):
-        # 凝缩：按标签聚类 ≥3 才抽象（照抄源码阈值）
+        # 纯 CPU 计算，交给 asyncio.to_thread；不要在同步函数里 await
         by_tag: dict[str, list[str]] = {}
         for mid, e in self._idx.items():
             if e["archived"]:
@@ -84,39 +85,37 @@ class MemoryPlugin(NekoPluginBase):
         for t, ids in by_tag.items():
             if len(ids) >= 3:
                 insights.append(f"[凝缩:{t}] {len(ids)} 条同类 → 抽象策略")
-        # 衰减：未被引用 -5%；<0.1 归档（绝不删除）
         for mid, e in self._idx.items():
             if not e["archived"]:
                 e["importance"] = max(0.0, e["importance"] - 0.05)
                 if e["importance"] < 0.1:
                     e["archived"] = True
-        self._save_index()
         return insights
 
     @timer_interval(id="dream", seconds=3600, name="梦境整理", auto_start=True)
     async def _dream(self, **_):
-        await self._async_dream()
-        return Ok({"status": "dreamed"})
-
-    async def _async_dream(self):
         insights = await asyncio.to_thread(self._consolidate)   # 不阻塞事件循环
+        await self._save_index()                                # 落盘在 async 侧
         if insights:
-            self.push_message(
+            self.ctx.push_message(
                 source="memory", visibility=["chat"], ai_behavior="blind",
                 parts=[{"type": "text", "text": "⚡ " + insights[0][:80]}],
                 priority=2,
             )
+        return Ok({"status": "dreamed"})
 
     @ui.action(id="recall")
+    @plugin_entry(id="recall", name="回忆", description="按关键词检索记忆")
     async def recall(self, keyword: str = "", **_):
         hits = [m for m, e in self._idx.items()
                 if not e["archived"] and keyword in " ".join(e["tags"])]
         return Ok({"hits": hits[:10]})
 
     @ui.action(id="reset_memory")
+    @plugin_entry(id="reset_memory", name="重置记忆", description="清空记忆索引")
     async def reset(self, **_):
         self._idx = {}
-        self._save_index()
+        await self._save_index()
         return Ok({"status": "reset"})
 ```
 

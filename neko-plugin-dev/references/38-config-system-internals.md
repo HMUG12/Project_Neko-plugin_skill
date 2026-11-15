@@ -85,7 +85,7 @@ async def update_settings(self, config: dict = None, **_):
 
 ```python
 @lifecycle(id="config_change")
-async def on_config_change(self, old_config=None, new_config=None, **_):
+async def on_config_change(self, **_):
     """配置变更时自动触发。"""
     if new_config:
         settings = new_config.get("settings", {})
@@ -291,14 +291,14 @@ type State = {
 ```python
 # ❌ 错误：new_config 不包含的字段被覆盖为 None
 @lifecycle(id="config_change")
-async def on_config_change(self, new_config=None, **_):
+async def on_config_change(self, **_):
     settings = new_config.get("settings", {})
     self.enable_ops = settings.get("enable_ops")        # 可能变成 None！
     self.scan_paths = settings.get("scan_paths")        # 可能变成 None！
 
 # ✅ 正确：使用 get() 的第二个参数做默认值
 @lifecycle(id="config_change")
-async def on_config_change(self, new_config=None, **_):
+async def on_config_change(self, **_):
     settings = new_config.get("settings", {})
     self.enable_ops = settings.get("enable_ops", self.enable_ops)
     self.scan_paths = settings.get("scan_paths", self.scan_paths)

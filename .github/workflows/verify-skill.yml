@@ -1,0 +1,40 @@
+# 技能包仓库自检（不是 Market 插件发布 workflow）
+# 对应 Issue #1：把「代码空间自动化规范」从 0 补成可执行的 CI 门禁
+name: Verify Skill Package
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Repository self-check
+        run: python scripts/verify_skill.py
+
+      - name: Ruff pinned 0.12.4 (official Market policy)
+        run: >-
+          uvx ruff==0.12.4 check --ignore-noqa --isolated
+          --no-respect-gitignore --target-version py311 --line-length 120
+          --select E4,E7,E9,F,I --exclude vendor
+          neko-plugin-dev/examples/minimal_plugin
+
+      - name: Example static tests
+        working-directory: neko-plugin-dev/examples/minimal_plugin
+        run: uvx pytest -q -c tests/pytest.ini tests

@@ -59,7 +59,7 @@ class MyPlugin(NekoPluginBase):
         return Ok({"status": "reloaded"})
 
     @lifecycle(id="config_change")
-    async def on_config_change(self, old_config=None, new_config=None, **_):
+    async def on_config_change(self, **_):
         """配置变更时调用（含新旧配置；也可写成 `async def on_config_change(self, **_)` 后 `await self.config.dump()` 重新读取，更稳健）"""
         if new_config:
             settings = new_config.get("settings", {})
@@ -283,7 +283,7 @@ self.push_message(
     visibility=["chat"],          # ["chat"] / ["notification"] / 两者
     ai_behavior="blind",          # "blind" = AI 不处理，只展示
     parts=[{"type": "text", "text": f"索引完成喵～共找到 {count} 个文件 ✨"}],
-    priority=5,                   # 0-2=低(信息), 3-5=中(一般), 6-8=高(重要), 9-10=紧急
+    priority=0,                   # 整数即可；官方未定义语义分档
 )
 ```
 

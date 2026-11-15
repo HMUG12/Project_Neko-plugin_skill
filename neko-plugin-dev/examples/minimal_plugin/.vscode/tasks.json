@@ -4,7 +4,16 @@
     {
       "label": "N.E.K.O: check minimal_plugin",
       "type": "shell",
-      "command": "uv run python -m plugin.neko_plugin_cli.cli check minimal_plugin",
+      "command": "uv run neko-plugin check \"${workspaceFolder}\"",
+      "options": {
+        "cwd": "${config:nekoPlugin.repoRoot}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "N.E.K.O: sync minimal_plugin",
+      "type": "shell",
+      "command": "uv run neko-plugin sync \"${workspaceFolder}\" --clean",
       "options": {
         "cwd": "${config:nekoPlugin.repoRoot}"
       },
@@ -13,7 +22,7 @@
     {
       "label": "N.E.K.O: check -r minimal_plugin",
       "type": "shell",
-      "command": "uv run python -m plugin.neko_plugin_cli.cli check -r minimal_plugin",
+      "command": "uv run neko-plugin check -r \"${workspaceFolder}\"",
       "options": {
         "cwd": "${config:nekoPlugin.repoRoot}"
       },
@@ -22,7 +31,7 @@
     {
       "label": "N.E.K.O: build minimal_plugin",
       "type": "shell",
-      "command": "uv run python -m plugin.neko_plugin_cli.cli build minimal_plugin",
+      "command": "uv run neko-plugin build \"${workspaceFolder}\"",
       "options": {
         "cwd": "${config:nekoPlugin.repoRoot}"
       },

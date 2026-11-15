@@ -2,7 +2,7 @@
 
 > **基线**：官方 `Project-N-E-K-O/N.E.K.O` main `acfbdbc`（2026-11-15 只读核对），依据 `docs/zh-CN/plugins/cli.md`、`docs/plugins/cli.md`、`plugin/neko_plugin_cli/cli.py`。**完整版见 [`neko-plugin-dev/references/51-build-publish-and-market-review.md`](neko-plugin-dev/references/51-build-publish-and-market-review.md)**。
 >
-> ⚠️ **旧版用户**：工作区 `N.E.K.O-main (1)` 的旧快照 CLI 没有 `publish` / `lint` / `precheck` / `create-repo`，本文命令属于官方最新 main。执行前用 `uv run neko-plugin --help` 确认命令集；两版对照见 `SKILL.md §7.1`。
+> ⚠️ 本技能包只按官方 main 单一口径编写，不再并列旧快照。执行前用 `uv run neko-plugin --help` 确认命令集；官方命令集见 `SKILL.md §7.1` 与 `neko-plugin-dev/references/51-build-publish-and-market-review.md` §5。
 
 ## 前提
 

@@ -1,3 +1,36 @@
+## 4.3.0 · 2026-11-15（单一口径 + 官方 init 生成物）
+
+> 依据 GitHub [Issue #2](https://github.com/HMUG12/Project_Neko-plugin_skill/issues/2) 的增量复核清单与复核意见。通过 GitHub Contents API **只读查询**官方 `Project-N-E-K-O/N.E.K.O` main `acfbdbc` 逐条验证，**未克隆、未下载仓库**。
+
+### 事实核对（全部只读查询后确认）
+- `plugin/_types/plugin_types.py:8`：`PluginType = Literal["plugin", "adapter"]`；`docs/plugins/migration-v0.9.md:15` 明确 Extension 类型 / `[plugin.host]` / `plugin.sdk.extension` 已移除且无兼容路径；`schema.py:233` 的 `reject_removed_host_config` 会拒绝 `[plugin.host]`。
+- `validate_cmd.py:200` 的 `_check_plugin_dependency_id_list` 要求 `[plugin].dependencies` 是插件 ID 字符串列表；`schema.py:229` 的 `List[PluginDependencySchema]` 是宿主运行时内部模型，不作为 manifest 写法依据。
+- `plugin/core/zmq_transport.py:1-70`：4 条 PUSH/PULL 通道、7 个 channel tag（含 `msg_batch`）、下行 `pickle` / 上行 `ormsgpack` + per-host token、独立图片上行。
+- `plugin/sdk/shared/core/context.py:463-487` 返回 `PushMessageResult`；`settings.py:588` 为 512 KiB；`docs/plugins/push-message.md` 给出 `reason` 枚举、`images.upload()` 与预算表；`docs/plugins/decorators.md:124` 是 `async def cleanup`，`:186` 说明 priority 只影响展示顺序。
+- `plugin/neko_plugin_cli/templates/generator.py:20-26,174-176,803-861`：pinned `ruff==0.12.4` 与 `init` 生成的 `ruff.toml` / `verify.yml` / `release.yml` 模板；`precheck_cmd.py:7-9` 的三门禁。
+- 官方 `plugin/plugins/lifekit/__init__.py:165,192,531`：`config.dump(timeout=...)` / `config.update({...})` / `config_change` 重读配置的公开写法。
+
+### 主要改动
+- **单一口径**：`SKILL.md`、`references/`（含索引与 20 条铁律）、`OTHER.md`、README、示例介绍全部删除 A/B 双口径与旧快照并列，只按官方 main 判定；旧快照信息压缩到 `REVIEW_FIXES.md` / `CHANGELOG.md` 存档，并在存档顶部声明「不参与规则判定」。
+- **Extension 清除**：`SKILL.md` §1 改为两种包类型并移除 `plugin.sdk.extension`；`01` / `16` / `51` 篇删除 `extension` 类型的正面描述与 check 覆盖项。
+- **重写三篇内部机制**：`30` 按 `PushMessageResult` / 512 KiB / `images.upload()` 整篇重写；`37` 按 4 通道 / 7 tag / ormsgpack 整篇重写；`31` 改为 6 个命名空间。
+- **契约统一**：`13` / `16` / `28` 等篇的 `neko-plugin add` → `sync --clean`；`11` / `13` / `14` / `36` / `46` / `49` 的裸 `@ui.action` 补 `@plugin_entry`；全仓 `config_change` 签名统一为 `async def on_config_change(self, **_)`（9 处）；`46` / `49` / `39` 修 `store.get/set` 的 `Result` 与 `await`；删除 `02` / `18` / `11` 的 priority 自拟分档；`01` 模板把 `dependencies` 移进 `[plugin]` 段内。
+- **示例按官方 init 生成物重建**：把官方 `generator.py` / `plugin_types.py` / `source_paths.py` 只读取出并组成最小可运行包，**实际执行** `generate_plugin()` 与 `generate_repo_support_files()`（用官方支持的 `entry_point_override` 对齐示例类名）；`ruff.toml` / `verify.yml` / `release.yml` / `.gitignore` / `.vscode/*` / `test_smoke.py` 共 7 份产出与示例**字节一致**（sha256 见示例 README），旧的「挂进 N.E.K.O 树再 check -r」workflow 与旧式 `python -m plugin.neko_plugin_cli.cli ...` VS Code task 已废弃；`__init__.py` 的面板保存改为 `config.update()` 落盘并在 `startup` / `config_change` 用 `config.dump()` 读回，`config.example.toml` 改用 `[minimal_plugin]` 命名空间；`push_message` 判 `submitted` 回执；契约测试由 7 项扩到 10 项。
+- **仓库介绍同步**：README / 徽章升至 4.3.0，新增 4.3.0 修订说明，`OTHER.md` 与 `n.e.k.o_plugin_example/README.md` 改单口径。
+- **仓库自检 CI（关闭 [Issue #1](https://github.com/HMUG12/Project_Neko-plugin_skill/issues/1)）**：新增 `scripts/verify_skill.py`（纯标准库，7 项硬门禁：相对链接 / py·toml·json 语法 / SKILL.md frontmatter / 官方 init 生成物 sha256 / 示例必备文件 / 静态契约测试 / 旧口径残留报告）与 `.github/workflows/verify-skill.yml`（push / PR 跑自检 + pinned `ruff==0.12.4` 官方 CI 原命令 + `uvx pytest`）；根 `.gitignore` 白名单放行 `scripts/` 与 `.github/`。把「代码空间自动化规范几乎为 0」落成可执行门禁，而不是再写一篇说明。
+
+### 本机真跑记录（4.3.0 收尾新增）
+- 官方 CI 的 lint 原命令 `uvx ruff==0.12.4 check --ignore-noqa --isolated --no-respect-gitignore --target-version py311 --line-length 120 --select E4,E7,E9,F,I --exclude vendor .` → `All checks passed!`；本地 `--config ruff.toml` 入口同样通过。
+- 真跑抓到并修掉 `routers/notes.py` 的 `I001`（import 顺序）；Issue #2 猜测的 `test_plugin_contract.py` import 顺序实际未命中。
+- `uvx pytest -q`（不带 `-c`）首轮因插件根 `__init__.py` 且本机无 `plugin.sdk` 报 `ModuleNotFoundError`（官方 CI 把插件 checkout 进 N.E.K.O 源码树，那里有 SDK）；补 `tests/pytest.ini`（`--import-mode=importlib`）后，用 `uvx pytest -q -c tests/pytest.ini tests` 跑出 **11 passed**，静态契约测试在裸环境也可跑。
+- 5 个 `.py` 全部 `compile` 通过；全仓相对链接 0 失效、py/toml/json 语法 0 失败；`SKILL.md` 468 行 / description 527 字符；规则区残留扫描 20 处命中均为「不要 await / 已废弃 / 不再并列旧快照」等反例或声明语境，无真实残留。
+- 官方 `plugin-market-verify.yml` 已只读核对：用 `--isolated` ruff，再在 N.E.K.O 源码树内跑 `sync --clean` 与 `check -r`。
+
+### 仍未实测
+- 真实宿主中加载插件、打开面板保存、Reload，以及官方 main 的 `check` / `lint` / `precheck` / `publish` 门禁；`publish → GitHub Release → Market 上架` 全链路、Market 人工审核标准、`NEKO_PLUGIN_MARKET_SECURITY_CHECKS=1` 扫描行为。**本机没有官方 main 的完整源码树与 N.E.K.O 宿主**，4.1.1 在旧快照 CLI 上的 `check --strict`（0 error / 1 warning）不能当作官方 main 验证。`examples/minimal_plugin/README.md` 给出可复现清单，但本仓库不声称已跑通。
+
+---
+
 # 更新日志
 
 本文件记录 N.E.K.O 插件开发 Skill 的所有版本变更。

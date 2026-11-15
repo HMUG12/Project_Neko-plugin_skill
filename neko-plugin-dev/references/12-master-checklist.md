@@ -13,7 +13,7 @@
 - [ ] `[plugin.store] enabled = true`（如果需要持久化配置）
 - [ ] `[settings]` 节包含所有配置项，且有合理的默认值
 - [ ] `__init__.py` 无 UTF-8 BOM（`python -c "py_compile.compile('__init__.py', doraise=True)"`）
-- [ ] Python 包声明在 `pyproject.toml [project].dependencies` 且已用 `neko-plugin sync <id> --clean` 装进 `vendor/`（官方新版无 `add` 命令，旧快照才有）；`plugin.toml` 的 `dependencies` 只写插件 ID
+- [ ] Python 包声明在 `pyproject.toml [project].dependencies` 且已用 `neko-plugin sync <id> --clean` 装进 `vendor/`（CLI 没有 `add` 命令）；`plugin.toml` 的 `dependencies` 只写插件 ID
 - [ ] `[settings]` 节配置项与 `DEFAULT_CONFIG` 字典 key 完全一致
 
 ## Python 后端
@@ -228,7 +228,7 @@
 
 ## 构建 / 验证 / 投稿审核 ⭐ 新增（官方 main，见 `51` 篇）
 
-> 本段以官方 `Project-N-E-K-O/N.E.K.O` main `acfbdbc`（2026-11-15）为准；旧快照 CLI 没有 `publish` / `lint` / `precheck`。
+> 本段以官方 `Project-N-E-K-O/N.E.K.O` main `acfbdbc`（2026-11-15）为准。
 
 ### 构建
 - [ ] `build` 产物是 `.neko-plugin`（bundle 为 `.neko-bundle`），`manifest.toml` 的 `id` / `version` / `package_type` 与源码一致

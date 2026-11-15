@@ -264,7 +264,7 @@ class KvStorePlugin:
 
     @plugin_entry(id="kv_get", name=tr("读取"), description=tr("读取键值"))
     async def kv_get(self, key: str, **_) -> JsonObject:
-        value = await self.store.get(self.prefix + key)
+        value = unwrap_or(await self.store.get(self.prefix + key), None)
         if value is None:
             return Err("KEY_NOT_FOUND", tr("键不存在: {key}").format(key=key))
         return Ok({"value": value})

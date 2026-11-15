@@ -1,5 +1,11 @@
-# 深审问题修复对照表（4.1.1 基线 + 4.2.0 纠偏）
+# 深审问题修复对照表（历史存档）
 
+> 🗄️ **本文件是历史存档，不参与当前规则判定**。自 **4.3.0** 起，本仓库的事实只按官方 `Project-N-E-K-O/N.E.K.O` main `acfbdbc` **单一口径**判定；`SKILL.md`、`references/`、`examples/` 与介绍文件均不再并列旧快照。
+>
+> 本文件保留旧版复核过程、「曾经错过什么」以及 §9 的版本代差勘误，仅供追溯与回滚。**不要依据本文件里的旧快照结论写插件代码**；当前规则请读 `neko-plugin-dev/SKILL.md`。
+>
+> 4.3.0 收尾：GitHub [Issue #2](https://github.com/HMUG12/Project_Neko-plugin_skill/issues/2) 的 8 类残留问题已按官方 main 单一口径逐条处理，[Issue #1](https://github.com/HMUG12/Project_Neko-plugin_skill/issues/1) 的自动化规范已落成 `scripts/verify_skill.py` + CI；真跑证据与完整改动见 `CHANGELOG.md` 4.3.0 条目。本文件此后不再追加规则性结论。
+>
 > 本文件记录 `Project_Neko-plugin_skill-深审-1114193300.md` 中每个问题的处理结果与依据，供复核与回滚。
 
 ## 0. 基线与依据
@@ -62,7 +68,7 @@
 
 ## 6. 审查报告中经**本地旧快照**核对不成立的条目（4.1.1 未采纳）
 
-> ⚠️ **本节只适用于工作区本地旧快照，已被 4.2.0 部分推翻**。官方 `main`（`acfbdbc`，2026-11-15）中下表多条说法其实是**真实存在的能力**，属于版本演进而非报告误判。**逐条勘误见 §9**，以 §9 为准。
+> ⚠️ **本节只适用于工作区本地旧快照，已被 4.2.0 部分推翻、4.3.0 完全降级为存档**。官方 `main`（`acfbdbc`，2026-11-15）中下表多条说法其实是**真实存在的能力**，属于版本演进而非报告误判。**逐条勘误见 §9**，以 §9 为准。
 >
 > 下表仍保留作为「旧快照下不可写」的反例；写插件前必须先确认目标版本，并用 `uv run neko-plugin --help` 核对命令集。
 
@@ -127,13 +133,13 @@
 
 ### 9.2 §6 中**仍然成立**的结论（不要写进文档）
 
-- ZMQ 传输是 `PUSH/PULL` + `pickle` + channel tag，**不是** PAIR / inproc / JSON；`ormsgpack` 属于 `plugin/message_plane/*` 另一条通道。
-- 官方 `decorators.md` 曾给出同步 `def` 定时器示例，与 `host.py` 的 `asyncio.run(fn())` 实现冲突——结论（必须 `async def`）正确，依据要换。
+- ~~ZMQ 传输是 `PUSH/PULL` + `pickle` + channel tag；`ormsgpack` 属于另一条通道~~ → **4.3.0 更正**：官方 main 的 `plugin/core/zmq_transport.py:3-31` 是 **4 条 PUSH/PULL 通道 / 7 个 tag**；下行 `pickle`、**上行 `ormsgpack`（MessagePack）+ per-host token**，图片上行为独立帧格式。旧结论只对旧快照成立，见 `37` 篇。
+- ~~官方 `decorators.md` 给出同步 `def` 示例~~ → **4.3.0 更正**：官方 main `docs/plugins/decorators.md:124` 的 `cleanup` 是 `async def`，不存在该冲突。`@timer_interval` 必须 `async def` 的结论不变。
 - `host.py:1383` / `:1174` 等固定行号会随版本漂移，不作为依据。
 - **新版也没有**的：`bus.emit()` / `get_recent()` / `union()` / `intersect()` / `difference()`、`on_init` / `on_start` / `on_stop` / `on_unload` 钩子、`[plugin.dependencies]` 内联表、`deps` / `release` 顶层子命令、`init setup-repo` / `init create-repo` 二级写法。`release_cmd.py` / `validate_cmd.py` 仍是内部实现模块。
 - `ChatCard` 不是持久化对象、卡片里的脚本/内联事件处理器**不会执行**（script-disabled iframe）；不能当成 JS 运行时。
 
-### 9.3 两版 CLI 命令集（以 `--help` 为准）
+### 9.3 历史：两版 CLI 命令集（存档，以 `--help` 与官方 `cli.py` 为准）
 
 | 官方 main `acfbdbc` | 本地旧快照 |
 |---|---|

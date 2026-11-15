@@ -10,8 +10,9 @@ description = "插件功能描述（给用户看）"     # 长描述
 short_description = "简短描述（给 AI 看）"   # 短描述，AI 用来匹配用户意图
 keywords = ["^查.*文件$", "search"]      # 正则表达式，仅用于粗筛候选（注意转义）
 version = "0.1.0"
-type = "plugin"                          # 普通插件；可省略（默认值）
+type = "plugin"                          # plugin | adapter；extension 已移除，可省略（默认 plugin）
 entry = "plugin.plugins.目录名:PluginClassName"  # module.path:ClassName，且必须是 NekoPluginBase 子类
+dependencies = ["other_plugin_id"]       # 插件间依赖：插件 ID 字符串列表，必须写在本段内、任何子表之前
 
 [plugin.author]
 name = "作者名"
@@ -25,10 +26,15 @@ enabled = true       # 是否启用
 auto_start = true    # 是否随 N.E.K.O 自动启动
 timeout = 10         # 启动就绪秒数，须 0 < timeout <= 300
 
+# 插件间依赖已在上方 [plugin] 段内声明；
+# Python 第三方包不写在这里，见本文 §6（pyproject.toml + vendor/）。
+#
+# ⚠️ 不要照抄成把 dependencies 写在 [plugin.store] / [plugin.sdk] 等子表之后：
+#    TOML 会把它解析成该子表的字段（如 plugin.store.dependencies），CLI 校验会失败。
+
 [plugin.store]
 enabled = true       # 是否启用持久化存储
 
-dependencies = ["other_plugin_id"]   # 插件 ID 字符串列表；无依赖可省略整行
 # Python 第三方包不写在这里，见本文 §6（pyproject.toml + vendor/）
 
 [plugin.database]
@@ -177,21 +183,20 @@ dependencies = ["httpx>=0.27"]
 ```bash
 uv run neko-plugin sync <plugin_id> --clean   # 官方 main：安装进 vendor/
 uv run neko-plugin check <plugin_id>          # 校验 vendor/ 是否满足声明
-# 旧快照 CLI 另有：neko-plugin add <plugin_id> "httpx>=0.27"（写 pyproject + 装 vendor）
 ```
 
 - **内联表 `openai = ">=1.0.0"` 是错误写法**：既不是字符串列表也不是依赖对象，加载/打包会失败（`neko_plugin_cli/core/dependencies.py` 会抛 `must be a list of plugin id strings`）。
 - 官方**不会**在安装插件时自动 pip 安装依赖；缺依赖时代码要做惰性导入 + 错误缓存（见 13-cloud-api-integration.md）。
-- **不支持 `requirements.txt`**；`extension` 类型不得声明外部 Python 依赖；禁止把第三方包装进共享的 N.E.K.O 解释器。
+- **不支持 `requirements.txt`**；禁止把第三方包装进共享的 N.E.K.O 解释器。Python 包只能走 `pyproject.toml` → `sync --clean` → `vendor/`。
 
-### 7. `[plugin.install]` / `[plugin.models]`（**仅官方 main，版本代差**）
+### 7. `[plugin.install]` / `[plugin.models]`
 
-本篇字段表以本地旧快照为准，其 `PluginSectionSchema` 没有这两个字段。**官方 `main` 的 `plugin/config/schema.py:227-228` 明确声明**：
+`plugin/config/schema.py:227-228` 明确声明：
 
 ```python
 install: Optional[PluginInstallSchema] = None           # [plugin.install]：宿主管理的安装动作
 models: Dict[PluginModelUsageId, PluginModelRequirementSchema] = Field(default_factory=dict)  # [plugin.models.<usage_id>]
 ```
 
-对应文档注释：「One host-managed install action declared by a plugin manifest」与「One model purpose declared under `[plugin.models.<usage_id>]`」。早期审查报告把它们列为「缺失项」在旧快照成立、**在官方新版不成立**。反向地，旧快照支持的 `[plugin.host]` 在官方新版 `schema.py:233-236` 已被 `reject_removed_host_config` **显式拒绝**。写 manifest 前务必确认目标版本，详细对照见 `51` 篇与 `REVIEW_FIXES.md §9`。
+对应文档注释：「One host-managed install action declared by a plugin manifest」与「One model purpose declared under `[plugin.models.<usage_id>]`」。反向地，`[plugin.host]` 在 `schema.py:233` 被 `reject_removed_host_config` **显式拒绝**——它随 Extension 包类型一起移除、无兼容路径（`docs/plugins/migration-v0.9.md:15`），不要写。字段全集以 `schema.py`、`plugin/core/ui_manifest.py`、`docs/plugins/plugin-toml.md` 为准。
 - 版本规范用 PEP 440；`vendor/` 必须随包一起发布。

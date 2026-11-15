@@ -233,15 +233,15 @@ dependencies = ["openai>=1.0.0"]
 官方**不会**自动安装，需要显式装进插件自带的 `vendor/`：
 
 ```bash
-uv run neko-plugin add ai_singer "openai>=1.0.0"
+uv run neko-plugin sync ai_singer --clean
 uv run neko-plugin sync ai_singer
 ```
 
 **dependencies 格式注意（修订）**：
 - `[plugin].dependencies` 是**插件 ID 字符串列表**（打包 CLI 校验口径）；运行时 schema 另有对象数组口径，见 `01-plugin-toml.md` §6
-- Python 包一律写 `pyproject.toml [project].dependencies`，并用 `neko-plugin add` / `sync` 装进 `vendor/`
+- Python 包一律写 `pyproject.toml [project].dependencies`，并用 `neko-plugin sync <id> --clean` 装进 `vendor/`（CLI 没有 `add` 命令）
 - `[plugin.dependencies]` 内联表（`openai = ">=1.0.0"`）和 `python = ["xxx"]` 都是错误写法
-- 官方不会自动安装依赖；`extension` 类型不得声明外部 Python 依赖
+- 官方不会自动安装依赖；Python 包只能走 `pyproject.toml` → `vendor/`
 
 ### 第九步：更新 UI 文件
 

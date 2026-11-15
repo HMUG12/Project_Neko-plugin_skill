@@ -5,7 +5,7 @@
 """
 from typing import Annotated
 
-from plugin.sdk.plugin import PluginRouter, plugin_entry, Ok, Err, SdkError
+from plugin.sdk.plugin import Err, Ok, PluginRouter, SdkError, plugin_entry
 
 MAX_NOTES = 50
 

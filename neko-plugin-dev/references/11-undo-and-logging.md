@@ -75,6 +75,7 @@ async def _remove_db_entries(self, paths: list[str]):
         await session.close()
 
 @ui.action(id="undo_operation")
+@plugin_entry(id="undo_operation", name="撤销操作", description="撤销最近一次操作")
 async def undo_operation(self, **_):
     if not self._undo_stack:
         return Ok({"success": False, "message": "喵～没有可以撤销的操作了"})
@@ -307,11 +308,7 @@ self.push_message(
 )
 ```
 
-**priority 级别**：
-- `1-3`：信息性通知（索引完成、统计更新）
-- `4-6`：警告（配置变更、路径跳过）
-- `7-9`：错误（操作失败、崩溃）
-- `10`：紧急（安全事件）
+**priority 取值**：`0–10` 整数，默认 `0`，只影响展示顺序（`docs/plugins/decorators.md:186`）。**官方未定义语义分档**，上面的 `priority=3` / `priority=8` 只是两个合法整数，不要当成低/高等级来解读，更不要自拟「紧急」分级。
 
 **visibility**：
 - `["chat"]`：显示在聊天中

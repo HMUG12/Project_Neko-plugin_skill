@@ -246,7 +246,7 @@ const effectiveActions = cachedActions.length > 0 ? cachedActions : actions
 
 **现象**：旧文档声称「入口方法缺少 `_ctx=None` 会报 `got an unexpected keyword argument`」。
 
-**原因**：这是**错误**说法。框架**从不**向 `@plugin_entry`/`@ui.action`/`@lifecycle` 注入 `ctx` 参数（仓库真实插件 0 处使用 `_ctx=None`）；运行上下文通过 `self.ctx` 属性获取。
+**原因**：框架不会把 `ctx` 当作普通位置参数塞进 `@plugin_entry` / `@ui.action` / `@lifecycle`（真实插件 0 处使用 `_ctx=None`）；运行上下文通过 `self.ctx` 属性获取。例外是 `@llm_tool(reply_tail=True)` 的处理函数必须能接收 `_ctx`，可用 `**_` 兜底——这与 SKILL 铁律 #3 一致，不要理解成「框架绝不传任何上下文」。
 
 **修复**：删除所有 `_ctx=None` 参数；需要上下文用 `self.ctx`。`**_` 仅作为前向兼容 catch-all（可选，非强制）。
 
@@ -343,7 +343,7 @@ await self.ctx.update_own_config({"settings": {
 
 # ✅ 正确：在 on_config_change 中用 .get() 读取，提供默认值
 @lifecycle(id="config_change")
-async def on_config_change(self, new_config=None, **_):
+async def on_config_change(self, **_):
     if new_config:
         settings = new_config.get("settings", {})
         for key in self.DEFAULT_CONFIG:      # 遍历所有已知 key
@@ -698,9 +698,9 @@ async def _on_check(self, **_):
 
 > 详见 [30-push-message-internals.md](30-push-message-internals.md)
 
-**现象**：`await ctx.push_message(...)` 抛 `TypeError`；或大文件把消息平面载荷撑满（**旧快照** 256 KiB / **官方 main** 512 KiB，均可由 `NEKO_MESSAGE_PLANE_PAYLOAD_MAX_BYTES` 调整）。
+**现象**：`await ctx.push_message(...)` 抛 `TypeError`；或大文件把消息平面载荷撑满（`MESSAGE_PLANE_PAYLOAD_MAX_BYTES` 默认 512 KiB，可用 `NEKO_MESSAGE_PLANE_PAYLOAD_MAX_BYTES` 调整）。
 
-**原因**：`push_message` 是**同步**方法，对它 `await` 必然失败。旧参 `content=` / `binary_data=` 会触发 `DeprecationWarning`；`data` 会被转成 `binary_base64`，JSON 序列化还会再膨胀。**版本代差**：旧快照返回 `None` / 256 KiB；官方 main 返回 `PushMessageResult`（`submitted` / `reason=payload_too_large`）/ 512 KiB，并提供 `await ctx.images.upload()` 处理大图（源 32 MiB、归一化 8 MiB 上限）。早期审查报告提到这些是**针对新版**说的，不是误判；详见 `30` 篇 §0、`51` 篇与 `REVIEW_FIXES.md §9`。
+**原因**：`push_message` 是**同步**方法，对它 `await` 必然失败。v1 的 `content=` / `binary_data=` 等字段是 compatibility-only，会触发静态检查与运行时警告；`data` 会被转成 `binary_base64`，序列化还会再膨胀。它返回 `PushMessageResult`（`submitted` / `reason=payload_too_large`），超限会**本地整条拒绝**；大图用 `await ctx.images.upload()`（源 32 MiB、归一化 8 MiB 上限）。`submitted=True` 只表示 SDK 本地提交路径已接管，不代表宿主消费或送达。详见 `30` 篇与 `51` 篇 §3。
 
 **修复**：
 ```python

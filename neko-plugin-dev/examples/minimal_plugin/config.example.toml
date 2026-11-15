@@ -1,3 +1,5 @@
 # 运行时配置示例（复制到 <数据根>/plugins/minimal_plugin/config/plugin.toml）
 # 注意：运行时配置是明文 TOML，不要在这里写真实密钥，也不要打印到日志。
+# 命名空间与 __init__.py 的 _reload_config() 一致：cfg["minimal_plugin"]["greeting"]
+[minimal_plugin]
 greeting = "你好"

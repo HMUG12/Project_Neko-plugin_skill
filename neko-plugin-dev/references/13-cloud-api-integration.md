@@ -37,8 +37,7 @@ except ImportError:
 dependencies = ["dashscope>=1.20.0"]
 ```
 ```bash
-uv run neko-plugin add <plugin_id> "dashscope>=1.20.0"
-uv run neko-plugin sync <plugin_id>
+uv run neko-plugin sync <plugin_id> --clean
 ```
 `plugin.toml` 的 `dependencies` 只写插件 ID 字符串列表；官方不会自动安装 Python 包。
 
@@ -240,6 +239,7 @@ async def health_check(self) -> tuple:
 
 ```python
 @ui.action(label="💾 保存配置", refresh_context=True)
+@plugin_entry(id="save_api_config", name="保存配置", description="保存云 API 配置")
 async def save_api_config(self, config: dict = None, **_):
     # 1. 更新配置
     self._config["api_key"] = config.get("api_key", "")

@@ -21,3 +21,10 @@
 
 # —— 保留 .gitignore 自身 ——
 !.gitignore
+
+# —— 保留仓库自检脚本与 CI（Issue #1：代码空间自动化规范） ——
+!scripts/
+!scripts/**
+!.github/
+!.github/workflows/
+!.github/workflows/**

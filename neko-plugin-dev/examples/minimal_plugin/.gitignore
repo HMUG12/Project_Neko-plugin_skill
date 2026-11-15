@@ -1,17 +1,17 @@
-# Python 字节码缓存（不要提交，也不要同步到运行目录）
 __pycache__/
-*.pyc
-*.pyo
+*.py[cod]
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
-
-# 运行时配置与本地数据（可能含真实密钥）
-config/plugin.toml
-*.local.toml
+.venv/
+venv/
+vendor/
+/.vendor.staging-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]
+/.vendor.backup-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]
+/.vendor.backup-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f].pending
+dist/
+build/
+*.egg-info/
 store.db
 .env
-
-# 开发用
-tsconfig.json
-node_modules/
+.DS_Store

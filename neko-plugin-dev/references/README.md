@@ -2,7 +2,7 @@
 
 > 基于 `file_manager` + `ai_singer` + `music_pusher` + `qq_auto_reply` 多插件实战 + N.E.K.O-main 主程序深度逆向分析 + 插件市场 31 个已上架插件源码逆向，从零到一，从入门到避坑，涵盖 52 个主题（含 1 篇可选工作流 00 + 11 篇融合：8 篇外部开源 skill 最佳实践（40–43 + 46–49）+ 1 篇本地插件架构逆向（44）+ 1 篇融合速查（45）+ 1 篇市场插件逆向工程（50）+ 1 篇官方构建/发布/审核专篇（51）），并附 1 个示例插件（examples/，**尚未在干净环境跑通端到端验证**）。
 >
-> **版本基线 · 双口径**：`00`–`50` 的事实层基于工作区**本地旧快照**（SDK `>=0.1.0,<0.2.0`，官方文档核对 2026-09-12）；**`51` 篇单独以官方 `Project-N-E-K-O/N.E.K.O` main `acfbdbc`（2026-11-15 只读核对）为准**，讲构建／发布／验证／审核。两版 CLI 命令集与部分 API 存在代差，差异见 [`../SKILL.md`](../SKILL.md) §7.6 与 [`REVIEW_FIXES.md`](../../REVIEW_FIXES.md) §9。**动手前先 `uv run neko-plugin --help` 确认目标版本**。文中未标注「已验证」的代码片段均为**示意**。
+> **版本基线 · 单一口径**：`00`–`51` 全部事实层只按官方 `Project-N-E-K-O/N.E.K.O` main `acfbdbc`（2026-11-15 只读核对）判定，不再并列旧快照。`REVIEW_FIXES.md` / `CHANGELOG.md` 中的旧版记录是历史存档，不参与规则判定。动手前先 `uv run neko-plugin --help` 确认命令集。
 >
 > **代码块是摘录，不是可独立运行的模块**：`references/` 里的 `python` 代码块多数是从类里摘出的方法片段，或签名里用 `...` 占位，单独复制去 `py_compile` 会报 `'await' outside function` 一类错误。要可复制的完整骨架请用 [`../examples/minimal_plugin/README.md`](../examples/minimal_plugin/README.md)；反例代码块均以 `# ❌ 错误` 标注，不要照抄。
 
@@ -97,7 +97,7 @@ uv run neko-plugin check my_plugin --strict
 |------|------|------|---------|
 | 29 | [生命周期内部机制](29-plugin-lifecycle-internals.md) | 按源码重写：6 个合法 `@lifecycle(id=...)`、Reload 是重启进程、`config_change` 的 kwargs、启动/停止时序 | 排查启动/停止 bug |
 | 30 | [Push Message 深度解析](30-push-message-internals.md) | visibility/ai_behavior两轴模型、Parts结构、coalesce_key、媒体播放、base64编码 | 推送任何消息 |
-| 31 | [Bus 门面系统](31-bus-system-internals.md) | 可重放查询链 `get().filter().sort().limit()`、计划节点树、五条总线、Revision 追踪、Watch 订阅（**已移除 get_recent/reload/union**） | 查询消息/事件/记忆 |
+| 31 | [Bus 门面系统](31-bus-system-internals.md) | 可重放查询链 `get().filter().sort().limit()`、计划节点树、六个命名空间（含 bus.frames）、Revision 追踪、Watch 订阅（**已移除 get_recent/reload/union**） | 查询消息/事件/记忆 |
 | 32 | [NekoPluginBase 内部](32-nekopluginbase-internals.md) | 双层继承、Entry收集、Router绑定、SDK上下文封装、LLM Tool注册、Store/DB/State | 深入理解插件基类 |
 | 33 | [PluginRouter Entry 系统](33-pluginrouter-entry-internals.md) | 懒解析策略、动态Entry、before/after钩子、hook系统、quick_action、分发全流程 | 设计多模块插件 |
 
@@ -108,7 +108,7 @@ uv run neko-plugin check my_plugin --strict
 | 34 | [Logger 日志系统](34-logger-system-internals.md) | 双风格兼容、日志落地路径、Root Bridge、敏感信息脱敏、懒解析机制 | 排查日志不落地/格式问题 |
 | 35 | [Store 与 Database](35-store-database-internals.md) | JSON vs SQLite、全量加载、每次写入持久化、持久化策略决策树 | 选择数据存储方案 |
 | 36 | [i18n 引擎](36-i18n-internals.md) | 回退链、参数插值、懒加载、tr函数、命名规范 | 实现多语言支持 |
-| 37 | [ZMQ 传输协议](37-zmq-transport-internals.md) | 按源码重写：PUSH/PULL + tcp://127.0.0.1:* + pickle + 6 种 channel tag；旧版 PAIR / JSON 描述已废弃 | 理解跨进程通信（插件作者无需接触） |
+| 37 | [ZMQ 传输协议](37-zmq-transport-internals.md) | 官方 main：4 条 PUSH/PULL 通道、7 个 channel tag、下行 pickle / 上行 ormsgpack + per-host token、独立图片上行；旧版 PAIR / JSON / 2 通道描述已废弃 | 理解跨进程通信（插件作者无需接触） |
 | 38 | [配置系统](38-config-system-internals.md) | toml/store/config三层关系、合并优先级、配置漂移防范、迁移策略 | 管理插件配置项 |
 
 ### 工程篇（开发流程）
@@ -140,7 +140,7 @@ uv run neko-plugin check my_plugin --strict
 
 | 编号 | 文档 | 内容 | 何时需要 |
 |------|------|------|---------|
-| 51 | [构建、官方发布工作流、验证与审核](51-build-publish-and-market-review.md) | `.neko-plugin`/`.neko-bundle` 包格式与 `build`；`init → setup-repo/create-repo → check/lint/precheck → publish`；验证分层与 CI 门禁；Market 首次审核 / Revision / 自动门禁 / `market-evidence.json` 构建来源证据链；两版 CLI 对照 | **打包发布、投稿上架、排查审核失败、对齐官方最新工作流时** |
+| 51 | [构建、官方发布工作流、验证与审核](51-build-publish-and-market-review.md) | `.neko-plugin`/`.neko-bundle` 包格式与 `build`；`init → setup-repo/create-repo → check/lint/precheck → publish`；官方命令集、验证分层与 CI 门禁；Market 首次审核 / Revision / 自动门禁 / `market-evidence.json` 构建来源证据链 | **打包发布、投稿上架、排查审核失败、对齐官方工作流时** |
 
 ---
 
@@ -148,7 +148,7 @@ uv run neko-plugin check my_plugin --strict
 
 `examples/minimal_plugin/` 是零第三方依赖的最小插件示例：`plugin.toml` + `pyproject.toml` + 主类（生命周期 / 双装饰器 / `@llm_tool`）+ `routers/notes.py`（继承 `PluginRouter`）+ `ui/settings.tsx`（可保存、无静默兜底）+ `tests/`。
 
-> ⚠️ **尚未在干净环境跑通端到端验证**；上手前先 `uv run neko-plugin check minimal_plugin --strict` 并在目标 SDK 上实际加载验证。该实测用的是**本地旧快照 CLI**，不等于通过官方 main 的 `lint` / `precheck` / `publish` 门禁。详见 [`examples/README.md`](../examples/README.md) 与 `51` 篇。
+> ⚠️ **端到端真宿主验证仍未跑**：`examples/minimal_plugin/` 的 7 份支撑文件由官方 `generator.py` 的 `generate_plugin()` / `generate_repo_support_files()` **实际执行产出并逐字节一致**（含 `ruff.toml` 与 reusable workflow）；本机真跑 pinned `ruff==0.12.4` 两种入口均通过、`uvx pytest -q -c tests/pytest.ini tests` 11 passed、5 个 `.py` 编译通过。但**未在真实宿主中加载、打开面板保存并 Reload**，官方 main 的 `check` / `lint` / `precheck` / `publish` 也未实测。可复现清单见 [`../examples/minimal_plugin/README.md`](../examples/minimal_plugin/README.md)。
 
 ## 交叉引用速查
 
@@ -233,16 +233,16 @@ my_plugin/
 8. **权限默认 `false`** — 安全优先，总开关 + 逐操作授权
 9. **AI 需要绝对路径** — 拒绝非绝对路径，错误消息中引导搜索
 10. **磁盘 I/O 用 `asyncio.to_thread`** — 不阻塞事件循环
-11. **Python 包依赖写 `pyproject.toml`** — `[plugin].dependencies` 是插件 ID 字符串列表；包用 `neko-plugin sync <id> --clean` 装进 `vendor/`（官方新版**没有 `add` 命令**，旧快照才有）。`[plugin.dependencies]` 内联表是错误写法
+11. **Python 包依赖写 `pyproject.toml`** — `[plugin].dependencies` 是插件 ID 字符串列表；包用 `neko-plugin sync <id> --clean` 装进 `vendor/`（CLI **没有 `add` 命令**）。`[plugin.dependencies]` 内联表是错误写法
 12. **`@ui.action` 在上、`@plugin_entry` 在下**（官方示例，**本机未运行验证**）— 最终以目标 SDK 官方示例为准
 13. **`@llm_tool` 用 `*,`** — 强制 keyword-only 避免位置参数错误
 14. **Router 在 `__init__` 中注册** — `include_router` 必须在 `super().__init__` 之后
 15. **第三方库惰性导入 + 错误缓存** — ImportError 后缓存失败结果，不重复重试
 16. **跨插件用 call_entry** — 不直接 import 其他插件类
 17. **startup 不跨插件调用** — 官方没有 `on_init` / `on_start`；跨插件调用放到首个工作入口并做失败回退
-18. **push_message 用 v2 `parts` 且不 `await`** — 同步方法；旧快照返回 `None` / 256 KiB，**官方 main 返回 `PushMessageResult`（`submitted`/`reason`）/ 512 KiB**，并有 `await ctx.images.upload()`。别塞大 base64；判断回执前先确认版本，见 `51` 篇与 `../SKILL.md` §7.6
+18. **push_message 用 v2 `parts`、不 `await`、要判回执** — 同步方法，返回 `PushMessageResult`（`submitted` / `reason`）/ 上限 512 KiB；`submitted=True` 只表示本地已提交。大图用 `await ctx.images.upload()`，别塞大 base64。见 `30` 篇与 `../SKILL.md` §5
 19. **Router entry 设 prefix** — 多 Router 用 prefix 避免 ID 冲突
-20. **Bus 查询用官方可重放链** — `get(...).filter(field=value).sort(by=...).limit()`；旧 `get_recent()`/`reload()`/`union()`/`emit()` 已移除。旧快照 5 个命名空间，**官方 main 新增第 6 个 `bus.frames`**（`31` 篇「五条总线」只适用于旧快照）
+20. **Bus 查询用官方可重放链** — `get(...).filter(field=value).sort(by=...).limit()`；`get_recent()` / `reload()` / `union()` / `emit()` 已移除。共 6 个命名空间，含 `bus.frames`（`31` 篇）
 
 ## 开发顺序
 

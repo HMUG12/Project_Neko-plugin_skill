@@ -1,11 +1,11 @@
 # 31 — Bus 门面深度解析
 
-> **来源**：官方文档（[SDK 迁移清单](https://project-neko.online/plugins/migration-v0.9)）+ N.E.K.O-main `plugin/core/bus/` 历史源码逆向。
+> **来源**：官方 `Project-N-E-K-O/N.E.K.O` main `acfbdbc` 的 `docs/plugins/migration-v0.9.md`、`docs/plugins/sdk-reference.md` 与 `plugin/core/bus/` 源码。
 > **适用**：理解宿主状态（消息/事件/生命周期/对话/记忆）的读取与订阅机制，排查通信相关 bug。
 >
 > ⚠️ **一句话定性**：Bus 是**宿主状态的只读/订阅门面（facade），不是发布订阅总线**。没有 `bus.emit()` / `bus.publish()` / `ctx.trigger_event()`。插件对外产出请用 `push_message` / `report_status` / UI Action / 跨插件 `call_entry`。
 >
-> **版本**：核对日期 2026-09-12，SDK `>=0.1.0,<0.2.0`。标 ✅ 的写法来自官方文档示例；标 🟡 的片段为**示意**（依据官方 API 复现，未在本机逐行运行）；标 ❌ 的为**已移除接口**，仅供阅读历史代码。
+> **版本**：官方 main `acfbdbc`（2026-11-15 只读核对）。标 ✅ 的写法来自官方文档示例；标 🟡 的片段为**示意**（依据官方 API 复现，未在本机逐行运行）；标 ❌ 的为**已移除接口**，仅供阅读历史代码。
 
 ### v0.9 迁移速查表
 
@@ -25,21 +25,21 @@
 
 官方对 Bus 的定义是"**宿主状态的只读/订阅门面**"，而不是基于 topic 的 pub/sub。它支持惰性求值与变更订阅。
 
-### 总线命名空间（**版本代差：旧版 5 条 / 官方 main 6 条**）
+### 总线命名空间（官方 main：6 条）
 
 ```
-BusHub (门面中枢)  —— 本篇以工作区旧快照为准
+BusHub (门面中枢)  —— 官方 main `acfbdbc`
 ├── messages/      ← 消息：聊天消息、插件推送   （可 get 查询 + watch 订阅）
 ├── events/        ← 事件：系统/自定义事件        （可 get 查询 + watch 订阅）
 ├── lifecycle/     ← 生命周期：插件状态变更        （可 get 查询 + watch 订阅）
 ├── conversations/ ← 对话上下文                   （只读快照）
 ├── memory/        ← 记忆                         （只读、有界、短 TTL 快照）
-└── frames/        ← 【仅官方 main 新增】宿主已推给模型提供商的最近几帧
+└── frames/        ← 宿主已推给模型提供商的最近几帧
 ```
 
-> **官方 `Project-N-E-K-O/N.E.K.O` main `acfbdbc`（2026-11-15）新增第 6 条总线 `bus.frames`**（`plugin/core/bus/frames.py`、`docs/plugins/sdk-reference.md` §Frames）。它保存宿主**已经推给模型 provider 的原始字节**，`frames = await self.bus.frames.get(max_count=4)`，记录含 `image_base64` / `mime` / `source` / `captured_at` / `turn_id` / `generation` / `frame_id` / `metadata`，可用 `sort(by="timestamp", reverse=True).limit(1)`。
+> 第 6 条总线 `bus.frames`（`plugin/core/bus/frames.py`、`docs/plugins/sdk-reference.md` §Frames）保存宿主**已经推给模型 provider 的原始字节**，`frames = await self.bus.frames.get(max_count=4)`，记录含 `image_base64` / `mime` / `source` / `captured_at` / `turn_id` / `generation` / `frame_id` / `metadata`，可用 `sort(by="timestamp", reverse=True).limit(1)`。
 >
-> **它不是日志、也不是队列**：message-plane 的 PUB socket 对慢订阅者/高水位会丢帧，宿主侧也有丢弃点。这些 store 是共享的，任何启用的插件都能读 `conversations` 和 `frames`（含图片），读取不按插件隔离。本篇其余「五条总线」的描述只适用于旧快照；`bus.emit()`、`get_recent()`、`union()` 等仍不存在。
+> **它不是日志、也不是队列**：message-plane 的 PUB socket 对慢订阅者/高水位会丢帧，宿主侧也有丢弃点。这些 store 是共享的，任何启用的插件都能读 `conversations` 和 `frames`（含图片），读取不按插件隔离。`bus.emit()`、`get_recent()`、`union()` 等仍不存在。
 
 ### 数据流（子进程 → 宿主）
 

@@ -93,9 +93,9 @@ Python 第三方包**不写在这里**，改写在插件目录的 `pyproject.tom
 dependencies = ["httpx>=0.27"]
 ```
 
-再用 `uv run neko-plugin add <id> "httpx>=0.27"` / `uv run neko-plugin sync <id>` 装进 `vendor/`。`neko_plugin_cli/core/dependencies.py:75` 会拒绝非字符串列表（旧文档里 `[plugin.dependencies]` 内联表 / `python = [...]` 都不是合法写法）。
+再用 `uv run neko-plugin sync <id> --clean` 装进 `vendor/`（CLI 没有 `add` 命令）。`neko_plugin_cli/core/dependencies.py:75` 会拒绝非字符串列表（旧文档里 `[plugin.dependencies]` 内联表 / `python = [...]` 都不是合法写法）。
 
-> 运行时 `plugin/config/schema.py:103` 另有一套 `List[PluginDependencySchema]` 对象数组口径，与 CLI 校验不一致；写插件时以 CLI 口径为准，高级结构化依赖用 `[plugin.dependency]` / `[[plugin.dependency]]`。声明了依赖不等于目标插件一定已加载，**运行时仍要探测并按可用性降级**（见 3.2）。
+> 运行时 `plugin/config/schema.py:229` 是宿主运行时内部模型 `List[PluginDependencySchema]`；写 manifest 以 CLI 校验口径为准，高级结构化依赖用 `[plugin.dependency]` / `[[plugin.dependency]]`。声明了依赖不等于目标插件一定已加载，**运行时仍要探测并按可用性降级**（见 3.2）。
 
 ### 3.2 运行时检查依赖（🟡 示意）
 

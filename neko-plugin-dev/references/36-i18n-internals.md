@@ -251,11 +251,13 @@ label = self.i18n.t("actions.scan", default="扫描")
 ```python
 # ❌ 错误：硬编码中文
 @ui.action(id="scan", label="扫描文件")
+@plugin_entry(id="scan", name="扫描", description="扫描文件")
 async def scan(self, ...):
     ...
 
 # ✅ 正确：使用 tr 函数
 @ui.action(id="scan", label=tr("actions.scan.label", default="扫描文件"))
+@plugin_entry(id="scan", name="扫描", description="扫描文件")
 async def scan(self, ...):
     ...
 ```

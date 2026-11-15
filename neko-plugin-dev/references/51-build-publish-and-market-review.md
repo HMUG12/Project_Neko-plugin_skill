@@ -1,10 +1,10 @@
 # 51 — 构建、官方发布工作流、验证与审核
 
-> **基线（务必先读）**：本篇依据 **官方 `Project-N-E-K-O/N.E.K.O` 仓库 `main` 分支 commit `acfbdbc`（2026-11-15）** 只读核对，来源为 `docs/zh-CN/plugins/cli.md`、`docs/plugins/cli.md`、`docs/zh-CN/plugins/quick-start.md`、`plugin/neko_plugin_cli/docs/package-format.md`、`plugin/neko_plugin_cli/cli.py` 与各 `commands/*_cmd.py`、`.github/workflows/plugin-market-verify.yml` / `plugin-market-release.yml`、`.agent/skills/neko-plugin/references/plugin-checks-and-tests.md`。
+> **基线（务必先读）**：本技能包全部事实只按官方 `Project-N-E-K-O/N.E.K.O` 的 `main`（commit `acfbdbc`，2026-11-15 **只读查询**，未克隆、未下载仓库）判定。依据 `docs/zh-CN/plugins/cli.md`、`docs/plugins/cli.md`、`docs/zh-CN/plugins/quick-start.md`、`plugin/neko_plugin_cli/docs/package-format.md`、`plugin/neko_plugin_cli/cli.py` 与各 `commands/*_cmd.py`、`.github/workflows/plugin-market-verify.yml` / `plugin-market-release.yml`、`.agent/skills/neko-plugin/references/plugin-checks-and-tests.md`。
 >
-> **两个版本不要混用**：工作区内的 `N.E.K.O-main (1)` 是**旧版快照**（CLI 有 `add / init-repo / inspect / verify`，无 `publish / lint / precheck`；`push_message` 返回 `None`；载荷上限 256 KiB）。官方 `main` 已是**新版**（0.9.x 系列）。本篇讲**官方最新工作流**；旧版差异见 §7 与 `REVIEW_FIXES.md` §9。**执行前一律用 `uv run neko-plugin --help` 确认你手上版本的命令集**。
+> **执行前一律用 `uv run neko-plugin --help` 确认命令集**。历史修订与旧版差异只记录在 `REVIEW_FIXES.md` / `CHANGELOG.md`，属存档，不作为当前规则。
 >
-> 本篇未下载、未克隆官方仓库；示例的 `check --strict` 实测是在工作区旧版快照 CLI 上跑通的（见 `examples/minimal_plugin/README.md`），**新版 `publish` 全链路未经真机验证**。
+> 本篇**未在真实环境中跑过** `publish` → Release → Market 上架全链路；示例支撑文件已按官方 `generator.py` 的 `init` 模板重建，静态契约测试通过，但真宿主加载、面板保存与 Reload 仍未验证。
 
 ---
 
@@ -41,8 +41,7 @@ package.neko-plugin
 - `[plugin].dependencies`（`plugin.toml`）：**只声明对其他 N.E.K.O 插件的依赖**，与 Python 包无关。
 - Python 运行时依赖：写在**插件自己的** `pyproject.toml` 的 `[project].dependencies`，再用 `uv run neko-plugin sync <plugin_id> --clean` 装进该插件的 `vendor/`。
 - **不支持 `requirements.txt`**；**禁止**把第三方包装进共享的 N.E.K.O 解释器。
-- `extension` 类型不得声明外部 Python 运行时依赖。
-- 官方最新 CLI **没有 `add` 顶层命令**：依赖写进 `pyproject.toml` 后直接 `sync`。旧快照里的 `neko-plugin add <id> "<pkg>"` 属于旧版。
+- CLI **没有 `add` 顶层命令**：Python 依赖写进 `pyproject.toml` 后直接 `sync <id> --clean`。
 
 包内**禁止**出现：`__pycache__/`、`.pytest_cache/`、`.mypy_cache/`、`.venv/`、`dist/`、`build/` 及其他开发期临时产物。
 
@@ -197,12 +196,12 @@ uv run neko-plugin setup-repo hello_world --upgrade-github-actions             #
 
 `check --release` 常用附属参数：`-t/--target-dir`（包输出目录）、`--skip-tests`。
 
-`check` 覆盖：`plugin.toml` 可解析、`[plugin]` 必需字段、未知字段告警、`id/name/version/entry/type/host/sdk/store/i18n/safety/config_profiles/dependencies/plugin_runtime/plugin_state/adapter mode`、目录与 id 不匹配、entry 模块/文件/类、`@neko_plugin`、基类与类型匹配（warning）、startup/shutdown 钩子（warning）、`vendor/` 外 `.py` 的 AST 语法、`@plugin_entry` 的 id 字面量/重复/`input_schema` 浅校验/互斥关键字组、UI surface 文件存在、UI 权限串可识别、拒绝 `requirements.txt`、`pyproject.toml` 有外部依赖时要求 `vendor/`、`extension` 不得声明 Python 依赖、支撑文件可选检查。
+`check` 覆盖：`plugin.toml` 可解析、`[plugin]` 必需字段、未知字段告警、`id/name/version/entry/type/sdk/store/i18n/safety/config_profiles/dependencies/plugin_runtime/plugin_state/adapter mode`、目录与 id 不匹配、entry 模块/文件/类、`@neko_plugin`、基类与类型匹配（warning）、startup/shutdown 钩子（warning）、`vendor/` 外 `.py` 的 AST 语法、`@plugin_entry` 的 id 字面量/重复/`input_schema` 浅校验/互斥关键字组、UI surface 文件存在、UI 权限串可识别、拒绝 `requirements.txt`、`pyproject.toml` 有外部依赖时要求 `vendor/`、支撑文件可选检查。
 
 **已知盲点**（`plugin-checks-and-tests.md` 明确列出，`check` 通过 ≠ 运行通过）：
 
 - 运行时触发的 `@plugin_entry` 必须是 `async def`，`check` 不能完全保证；改 entry 要补触发测试。
-- 不覆盖 lifecycle / timer / message / custom event / hook / UI / extension / adapter 装饰器的完整语义。
+- 不覆盖 lifecycle / timer / message / custom event / hook / UI / adapter 装饰器的完整语义。
 - `input_schema` 只在字面 dict 时做浅检查；互斥检查是静态关键字判断。
 - `auto_start=false` **不能**阻止父进程导入与静态扫描，顶层副作用仍需 import smoke test。
 - UI action 权限与实际暴露需要 Hosted UI / 运行时检查。
@@ -327,24 +326,24 @@ CI 侧额外拒绝：非法 `plugin-id`、路径穿越/符号链接、`package-n
 
 ---
 
-## 5. 两版 CLI 对照（避免照抄旧命令）
+## 5. 官方命令集（照抄前先 `uv run neko-plugin --help` 确认）
 
-| 用途 | 官方 main（2026-11-15） | 本地旧快照 |
-|---|---|---|
-| 建骨架 | `init <id> --type plugin --name "..."` | `init <id> ... --no-interactive` |
-| 补支撑文件 | `setup-repo <id> [--github-actions] [--upgrade-github-actions] [--dry-run] [--overwrite] [--git] [--remote]` | `setup-repo <plugin>` |
-| 建 GitHub 仓库 | `create-repo <id> [--owner] [--private]`（用 gh） | `init-repo <id>` |
-| 依赖 | 写 `pyproject.toml` → `sync <id> [--clean] [--python]` | `add <id> "<pkg>"` + `sync <id>` |
-| 检查 | `check` / `-s` / `-r` / `-r --market-release` | `check` / `--strict` / `--release` / `--market-release` |
-| 固定 lint | `lint <id>` | 无 |
-| 本地 CI 门禁 | `precheck <id> [--json] [--skip-tests]` | 无 |
-| 包检查 | `check -r` 内含 inspect + payload hash | `inspect <pkg>` / `verify <pkg>` |
-| 构建 | `build <id> [-o] [-t] [--all] [--bundle]` | `build <id>` |
-| 安装 | `install` 仅兼容/导入指引；运行时走 Plugin Center | `install <pkg>` |
-| 分析 | `analyze <id>...` | `analyze` |
-| **发布** | **`publish <id>` / `publish github <id>` / `publish market <url>`** | **无**（靠 `release.yml` + 手工 Market 操作） |
+| 用途 | 命令 |
+|---|---|
+| 建骨架 | `init <id> --type plugin --name "..."` |
+| 补支撑文件 | `setup-repo <id> [--github-actions] [--upgrade-github-actions] [--dry-run] [--overwrite] [--git] [--remote]` |
+| 建 GitHub 仓库 | `create-repo <id> [--owner] [--private]`（用 gh） |
+| 依赖 | 写 `pyproject.toml` → `sync <id> [--clean] [--python]` |
+| 检查 | `check` / `-s` / `-r` / `-r --market-release` |
+| 固定 lint | `lint <id>` |
+| 本地 CI 门禁 | `precheck <id> [--json] [--skip-tests]`（lint → sync --clean → check -r） |
+| 包检查 | `check -r` 内含 inspect + payload hash 验证 |
+| 构建 | `build <id> [-o] [-t] [--all] [--bundle]` |
+| 安装 | `install` 仅兼容/导入指引；真实安装走 Plugin Center |
+| 分析 | `analyze <id>...` |
+| **发布** | **`publish <id>` / `publish github <id>` / `publish market <url>`** |
 
-`release_cmd.py` / `validate_cmd.py` 在新版仍是**内部实现模块**，不是顶层命令；`deps` 也不是顶层命令（`deps_cmd.py` 注册的是 `sync`）。这些结论在两版都成立。
+**命令边界**：`release_cmd.py` / `validate_cmd.py` 是内部实现模块，不是顶层命令；`deps` 不是顶层命令（`deps_cmd.py` 注册的是 `sync`）；没有 `release`、也没有 `add` 顶层命令；`init setup-repo` / `init create-repo` 这类二级写法不存在——它们都是顶层命令。`init` 生成物见 `plugin/neko_plugin_cli/templates/generator.py:174-176`：`ruff.toml`、`verify.yml`、`release.yml`。
 
 ---
 
@@ -381,6 +380,6 @@ CI 侧额外拒绝：非法 `plugin-id`、路径穿越/符号链接、`package-n
 ## 7. 未验证与边界
 
 - 本篇是**只读查询官方文档与源码**的结果，**未克隆、未下载**官方仓库，也**未在真实环境中跑过** `publish` → Release → Market 上架全链路；命令参数以 `uv run neko-plugin --help` 与目标版本源码为准。
-- 工作区 `examples/minimal_plugin/` 的 `check --strict` 实测依据是**本地旧快照 CLI**（0 error / 1 预期 warning），不能直接推断新版 `publish` 门禁也通过。
+- 官方 CI 的 lint 与测试链路已只读核对：`.github/workflows/plugin-market-verify.yml` 用 `uvx ruff==0.12.4 check --ignore-noqa --isolated --no-respect-gitignore --target-version py311 --line-length 120 --select E4,E7,E9,F,I --exclude vendor`，再把插件 checkout 进 N.E.K.O 源码树跑 `sync --clean` 与 `check -r`（那里才有 `plugin.sdk`）。本机已真跑这两条 ruff 入口、`uvx pytest -q -c tests/pytest.ini tests`（11 passed）、5 个 `.py` 编译；官方 main 的 `check` / `lint` / `precheck` / `publish` 与真宿主加载**仍未跑**。4.1.1 的 `check --strict`（0 error / 1 预期 warning）出自本地旧快照 CLI，**不算官方 main 验证**；`examples/minimal_plugin/README.md` 给出可复现清单，本技能包不声称已端到端跑通。
 - Market 的**人工审核标准**（审核员实际关注项）不在官方仓库中公开，本篇只覆盖可查到的自动门禁与流程语义。
 - `NEKO_PLUGIN_MARKET_SECURITY_CHECKS=1` 的扫描默认暂停，Market 侧策略可能随时变化；发布前以 Market 页面的实际检查结果为准。

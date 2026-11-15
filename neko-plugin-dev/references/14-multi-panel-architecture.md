@@ -178,7 +178,7 @@ async def on_reload(self, **_):
     self._init_backend()
 
 @lifecycle(id="config_change")
-async def on_config_change(self, old_config=None, new_config=None, **_):
+async def on_config_change(self, **_):
     if new_config:
         settings = new_config.get("settings", {})
         for key in self.DEFAULT_CONFIG:
@@ -192,12 +192,15 @@ async def on_config_change(self, old_config=None, new_config=None, **_):
 ```python
 # 所有修改配置的 action 都加 refresh_context=True
 @ui.action(label="💾 保存配置", refresh_context=True)
+@plugin_entry(id="save_api_config", name="保存配置", description="保存配置")
 async def save_api_config(self, ...): ...
 
 @ui.action(label="🎙️ 克隆声音", refresh_context=True)
+@plugin_entry(id="clone_voice", name="克隆声音", description="克隆声音")
 async def clone_voice(self, ...): ...
 
 @ui.action(label="🗑️ 删除", refresh_context=True)
+@plugin_entry(id="delete_item", name="删除", description="删除条目")
 async def delete_item(self, ...): ...
 ```
 

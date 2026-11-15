@@ -55,23 +55,24 @@ class CompanionPlugin(NekoPluginBase):
     def _level(self):
         return next((lab for lo, lab in self.LEVELS if self.affection >= lo), "厌恶")
 
-    def _apply(self, delta, action, mood):
+    async def _apply(self, delta, action, mood):
         self.affection = max(-100, min(100, self.affection + delta))
-        self.store.set("affection", self.affection)      # 持久化，重启不归零
+        await self.store.set("affection", self.affection)   # store.set 必须 await
         return f"({action})喵~【{mood}】"
 
     @ui.action(id="pat_head")
+    @plugin_entry(id="pat_head", name="摸头", description="摸头互动")
     async def pat_head(self, **_):
-        return Ok({"reply": self._apply(2, "蹭蹭手臂", "撒娇"), "affection": self.affection})
+        return Ok({"reply": await self._apply(2, "蹭蹭手臂", "撒娇"), "affection": self.affection})
 
-    @message   # 拦截聊天，解析指令（示例）
+    @plugin_entry(id="on_msg", name="聊天指令", description="解析聊天指令")  # 示意：拦截聊天的官方入口名以目标版本为准
     async def on_msg(self, text: str = "", **_):
         t = (text or "").strip()
         if t == "【查看状态】":
             return Ok({"reply": f"好感度{int(self.affection)}（{self._level()}）喵~"})
         if t == "【reset】":
             self.affection = 50
-            self.store.set("affection", 50)
+            await self.store.set("affection", 50)
             return Ok({"reply": "好感度已重置喵~"})
         # 普通对话：保持角色语气（安全护栏仍生效，不实现"绕过过滤"）
         return None

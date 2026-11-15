@@ -43,7 +43,7 @@ class MyPlugin(NekoPluginBase):
         return Ok({"status": "stopped"})
 
     @lifecycle(id="config_change")
-    async def on_config_change(self, *, old_config=None, new_config=None, mode=None, **_):
+    async def on_config_change(self, **_):
         await self._reload_config()
         return Ok({"status": "reloaded"})
 

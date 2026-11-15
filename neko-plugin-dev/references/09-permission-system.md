@@ -214,7 +214,7 @@ async def on_reload(self, **_):
     # ...
 
 @lifecycle(id="config_change")
-async def on_config_change(self, old_config, new_config, **_):
+async def on_config_change(self, **_):
     settings = new_config.get("settings", {}) if new_config else {}
     # 使用旧值作为 fallback，避免配置变更时丢失
     self.enable_ops = settings.get("enable_ops", self.enable_ops)
