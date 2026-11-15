@@ -3,7 +3,7 @@
 
 
 
-> 一套面向 [N.E.K.O](https://project-neko.online) 插件开发的 Skill 辅助，由 Agent 辅助，从搭建到避坑上线，全流程覆盖，推荐使用最新技能哦。
+> 一套面向 [N.E.K.O](https://project-neko.online) 插件开发的 Skill 辅助：从骨架搭建、SDK 契约、避坑排查，到**构建打包（`.neko-plugin` / `.neko-bundle`）、官方 `publish` 工作流、分层验证与 Market 首次审核**全流程覆盖。当前 4.2.0 已按官方 main `acfbdbc` 对齐构建 / 发布 / 验证 / 审核口径，并保留旧快照差异对照。
 
 [![Version](https://img.shields.io/badge/version-4.2.0-blueviolet.svg)](CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -29,9 +29,13 @@
 
 ## 这是什么
 
-本仓库是一个 **TRAE Skill**（技能包），用于在 TRAE 等 AI IDE 中协助开发 N.E.K.O 插件。当你在对话中提到「N.E.K.O 插件」「plugin.toml」「@plugin\_entry」等关键词，AI 会自动加载本技能，按既定规范给你写代码、查 bug、做重构。
+本仓库是一个 **Agent Skill 技能包**（`SKILL.md` 格式，适用于 TRAE、WorkBuddy 等支持该格式的 AI 编程工具）。当你在对话中提到「N.E.K.O 插件」「plugin.toml」「@plugin\_entry」等关键词，AI 会自动加载本技能，按既定规范给你写代码、查 bug、做重构。
 
-**底层是 4 个实战插件 + 主程序逆向 + 插件市场 31 个已上架插件逆向**：
+**事实依据分三层，4.2.0 起按 A/B 双口径标注**：
+
+- **A · 官方最新基线**：`Project-N-E-K-O/N.E.K.O` main `acfbdbc`（2026-11-15 只读查询，**未克隆、未下载仓库**）的 CLI 源码、官方文档、CI workflow 与 Market 审核流程。构建 / 发布 / 验证 / 审核以 [51 篇](neko-plugin-dev/references/51-build-publish-and-market-review.md) 与 [OTHER.md](OTHER.md) 为准。
+- **B · 本地旧快照**：工作区 `N.E.K.O-main (1)` 的 SDK 源码与 `docs/plugins/`。`00`–`50` 篇事实层与示例 `check --strict` 实测以此为准。
+- **实战复盘层**（旧快照期）：4 个实战插件 + 主程序逆向 + 插件市场 31 个已上架插件逆向：
 
 - `file_manager` — 文件管理插件（基础架构、权限、撤销、日志、数据库）
 - `ai_singer` — 智能演唱插件（云端 API、多面板、富 UI、流式输出、音频管线）
@@ -40,7 +44,7 @@
 - **N.E.K.O-main 主程序深度逆向** — 10 篇基础设施层内部机制（29–38）
 - **插件市场 31 个已上架插件源码逆向** — 六类成功插件范式（50）
 
-所有规则、模板、陷阱都来自这些项目、主程序源码与真实市场插件的实战复盘，不是纸上谈兵。
+所有规则、模板、陷阱都来自上述源码核对与实战复盘，不是纸上谈兵。两版的命令集、载荷上限、manifest 字段与 Bus 命名空间存在代差，逐条对照见 [REVIEW_FIXES.md §9](REVIEW_FIXES.md) 与 `SKILL.md §7.6`。
 
 ## 能帮你做什么
 
@@ -53,6 +57,12 @@
 - 处理音频/多媒体管线（纯 Python WAV 合并、Viseme 口型同步、双轨播放）
 - 排查 `N.E.K.O` 主程序层面的疑难问题（ZMQ 通信、Bus 总线、生命周期、配置漂移）
 - 错误处理、并发竞态、跨插件通信、消息积压管理、WebSocket 重连
+- **按官方 CLI 生成骨架并走完发布链路**：`init → check / lint / precheck → create-repo → publish`（见 [OTHER.md](OTHER.md) 与 [51 篇](neko-plugin-dev/references/51-build-publish-and-market-review.md)）
+- **构建可校验的发布包**：`.neko-plugin` / `.neko-bundle` 的 ZIP 结构、`payload/dependencies.toml`、`metadata.payload.hash`（载荷哈希）与 `check --release` 包检查
+- **对齐分层验证与 CI 门禁**：`check` / `-s` / `-r` / `-r --market-release`、`lint` 的固定 ruff 规则、`precheck` 三门禁、Verify / Release workflow 与 `check` 的盲点
+- **准备 Market 投稿与审核**：首次审核提交固定提交快照、Revision 修订、自动门禁（id / version / tag / origin / release.yml）、`market-evidence.json`（构建来源证据文件）三资产与证据签名链
+
+> 前 9 条以 B 版旧快照事实层为主；后 4 条以 A 版官方 main 为准。执行任何 CLI 命令前先 `uv run neko-plugin --help` 确认目标版本命令集。
 
 
 
@@ -67,10 +77,10 @@ Project_Neko-plugin_skill/
 ├── n.e.k.o_plugin_example/README.md       ← 市场仓库命名示例说明
 ├── REVIEW_FIXES.md                        ← 深审问题修复对照表
 └── neko-plugin-dev/                        ← 技能包本体（目录名与 SKILL.md 的 name 一致）
-    ├── SKILL.md                           ← 技能入口（TRAE 加载这个文件）
+    ├── SKILL.md                           ← 技能入口（Agent 工具加载这个文件）
     ├── examples/                          ← 示例插件（尚未跑通端到端验证，见 examples/README.md）⭐
     │   └── minimal_plugin/                 ← 零第三方依赖的最小示例：plugin.toml + pyproject.toml + __init__.py + routers/ + ui/ + tests/
-    └── references/                        ← 52 篇专题参考文档（含 00 可选工作流 + 39 官方指南 + 40–50 融合/逆向篇 + 51 官方构建/发布/审核）
+    └── references/                        ← 52 篇专题参考文档（00 可选工作流 + 01–39 基础/进阶/工程/实战/逆向 + 40–50 融合与市场逆向 + 51 官方构建/发布/审核）
         │
         │ ── 可选篇（1 篇 · 大型新插件按需启用）── ⭐
         ├── 00-development-coordinator.md   ← 五阶段工作流 + 最小状态持久化（可选，非强制前置）
@@ -147,25 +157,28 @@ Project_Neko-plugin_skill/
         ├── 49-neko-companion-state-machine.md      ← 陪伴状态机
         │
         │ ── 实战篇·七（1 篇）── 市场 31 插件逆向 ⭐
-        └── 50-market-plugin-reverse-engineering.md ← 31 已上架插件六类范式
+        ├── 50-market-plugin-reverse-engineering.md ← 31 已上架插件六类范式
+        │
+        │ ── 官方构建 / 发布 / 审核篇（1 篇 · 4.2.0 新增）── ⭐
+        └── 51-build-publish-and-market-review.md  ← 包格式 + build；init→check/lint/precheck→publish；验证分层与 CI；Market 首次审核 / Revision / 证据链；两版 CLI 对照
 ```
 
 ***
 
 ## 快速开始
 
-### 1. 在 TRAE 中安装本技能
+### 1. 在 Agent 工具中安装本技能
 
-把整个 `neko-plugin-dev/` 文件夹复制到你的 TRAE 技能目录：
+把整个 `neko-plugin-dev/` 文件夹复制到工具的技能目录（以 TRAE 为例）：
 
 ```powershell
 # Windows: 复制到 TRAE 全局技能目录
 Copy-Item -Path ".\neko-plugin-dev" -Destination "$env:USERPROFILE\.trae\skills\neko-plugin-dev" -Recurse -Force
 ```
 
-> 💡 复制到 TRAE 时建议去掉 `(4.1.0)` 后缀，避免路径中的特殊字符（括号与英文句点）；重命名后不影响技能加载。
+> 💡 目录名已在 4.1.1 统一为 `neko-plugin-dev`（与 `SKILL.md` 的 `name` 一致），**无需再去掉 `(4.1.0)` 后缀**，路径中也不含括号与英文句点。
 
-或直接在 TRAE 的「技能管理」里点「从本地文件夹导入」，选择 `neko-plugin-dev` 文件夹即可。
+或直接在工具的「技能管理」里点「从本地文件夹导入」，选择 `neko-plugin-dev` 文件夹即可。
 
 ### 2. 让 AI 加载技能
 
@@ -180,6 +193,18 @@ AI 会自动识别并加载 `neko-plugin-dev` 技能，后续对话都会按规�
 ```
 plugin.toml  →  __init__.py  →  ui/  →  i18n/  →  docs/  →  测试  →  部署
 ```
+
+**若使用官方最新 CLI，开发期直接走脚手架与门禁**（A 版口径，命令集以 `uv run neko-plugin --help` 为准）：
+
+```bash
+uv run neko-plugin init <id> --type plugin --name "My Plugin"   # 生成含 .git/ / ruff.toml / tests/ / verify.yml / release.yml 的骨架
+uv run neko-plugin check <id> --strict                          # 静态严格检查
+uv run neko-plugin lint <id>                                    # 与 Market CI 相同的固定 ruff 规则
+uv run neko-plugin precheck <id>                                # lint → sync --clean → check -r
+uv run neko-plugin build <id> -o out/<id>.neko-plugin            # 构建可校验的发布包
+```
+
+完整发布链路、两版 CLI 差异与 Market 审核见 [51 篇](neko-plugin-dev/references/51-build-publish-and-market-review.md) 与 [OTHER.md](OTHER.md)；旧快照命令（`add` / `init-repo` / `inspect` / `verify`）只适用于 B 版。
 
 ## 典型使用场景
 
@@ -231,18 +256,25 @@ AI：参考 20-plugin-router.md 用 PluginRouter 拆分多模块，并设 prefix
 AI：用 @llm_tool 装饰器，签名用 keyword-only（铁律 #13），详见 21-llm-tool-registration.md…
 ```
 
-### 场景 G：排查主程序级问题（V2.0）
+### 场景 G：排查主程序级问题（4.2.0 起按双口径）
 
 ```
 你：我的 push_message 推送大图片失败了。
-AI：铁律 #18 触发！大文件 base64 体积膨胀 33% 超 ZMQ 上限。详见 30-push-message-internals.md + 37-zmq-transport-internals.md…
+AI：先确认手上 CLI 是 A 还是 B 版：
+   A · 官方 main：载荷上限 512 KiB，返回 PushMessageResult（submitted / reason=payload_too_large），
+                 大图改走 await ctx.images.upload()（源 32 MiB / 归一化 8 MiB，失败抛 ValueError）；
+   B · 旧快照：上限 256 KiB、同步方法返回 None，不要写 await，也不要判断 submitted 回执。
+   两版都不要把大图 base64 直接塞进 parts 硬推；submitted=True 只表示 SDK 本地提交路径已接管，
+   不代表宿主消费或送达。详见 30 篇 §0、07 #37、51 篇 §7 与 REVIEW_FIXES.md §9…
 ```
 
 ### 场景 H：上线前检查
 
 ```
 你：我要发版了，帮我过一遍清单。
-AI：（加载 12-master-checklist）按 9 大类 80+ 项逐一过…
+AI：（加载 12-master-checklist + 51 篇 §6）先过构建 / 验证 / 投稿审核三块：
+   check -r（含 payload hash）→ lint → precheck → 审核已通过（不只是已申请）
+   → tag v<version> 与 plugin.toml.version 一致 → publish 完整跑到「Market 发布成功」…
 ```
 
 ***
@@ -255,14 +287,22 @@ AI：（加载 12-master-checklist）按 9 大类 80+ 项逐一过…
 |------|-------------|-------------|
 | **A. 源码树开发（推荐）** | `N.E.K.O/plugin/plugins/<id>/`，N.E.K.O 直接扫描该目录 | `uv run neko-plugin check <id> --strict` → 插件详情页 **Reload**；改依赖后重启该插件 |
 | **B. 开发者模式 Load unpacked** | 就地注册的源码绝对路径目录（文件夹名须与 entry 包名和 plugin.id 一致） | 编辑源码 → **Reload**；改依赖 → 重启插件 |
-| **C. 已安装包 / 手工同步** | 安装目录代码只读；配置/数据/缓存始终在用户数据目录 | 交付：`uv run neko-plugin build <id> --out <id>.neko-plugin` 再导入；仅在手工覆盖已安装目录时才需要删目标 `__pycache__/` |
+| **C. 已安装包 / 手工同步** | 安装目录代码只读；配置/数据/缓存始终在用户数据目录 | 交付：`uv run neko-plugin build <id> -o out/<id>.neko-plugin` 后在插件中心「导入」（`install` 只是兼容命令，不直接写运行时目录）；仅在手工覆盖已安装目录时才需要删目标 `__pycache__/` |
 
 ```bash
-# 官方标准循环（源码树场景）
+# B 版旧快照的标准循环（源码树场景）
 uv run neko-plugin init my_plugin --type plugin --name "My Plugin"
 uv run neko-plugin check my_plugin --strict        # 先过静态检查
 uv run python launcher.py                           # 启动源码版 N.E.K.O → Plugins 页启动/Reload/触发入口
 ```
+
+```bash
+# A 版官方最新：审核通过后发布可安装版本（在 N.E.K.O 源码根目录）
+uv run neko-plugin precheck <id>
+uv run neko-plugin publish <id>                     # 打 v<version> tag → GitHub Release 三资产 → 通知 Market
+```
+
+> A 版还有 `publish github <id>`（只建 Release）与 `publish market <github-release-url>`（补通知 Market）两种拆开执行的模式；完整链路见 [OTHER.md](OTHER.md) 与 [51 篇 §2](neko-plugin-dev/references/51-build-publish-and-market-review.md)。
 
 > ⚠️ `neko-plugin check` 通过 **不等于** 运行通过；打包成功也 ≠ 功能测试通过。示例插件本身也需在目标 SDK 上实际加载、调用、打开 UI 后才能称“可运行”。
 >
@@ -289,9 +329,9 @@ uv run python launcher.py                           # 启动源码版 N.E.K.O �
 
 ## 历史更新日志
 
-> 在 V2.0 基础上的「融合增强版」，主题 38 → 51。
+> 以下为历史版本的当时记录，**不是当前状态**；当前为 4.2.0、52 篇专题（含 51 号官方构建 / 发布 / 审核篇）。在 V2.0 基础上的「融合增强版」当时把主题从 38 扩到 51。
 
-### 主题扩展 38 → 51
+### 主题扩展 38 → 51（当时）
 
 - 🆕 可选工作流 00：融合用户「AI 开发协作协调器」skill，五阶段工作流 + 最小状态持久化（大型新插件按需启用，**非强制前置**）
 - 🆕 融合外部最佳实践 10 篇（40–49）：工程纪律、反 AI 味 UI、网页集成、安全加固、本地逆向、融合速查、持久记忆、LLM 路由、压缩脱敏、陪伴状态机
@@ -310,7 +350,7 @@ uv run python launcher.py                           # 启动源码版 N.E.K.O �
 ### 文档导航 & 结构
 
 - references/README.md 新增交叉引用表 + 50 号导航
-- SKILL.md 参考文档扩展为 51 篇，新增「实战篇·七」
+- SKILL.md 参考文档当时扩展为 51 篇，新增「实战篇·七」；4.2.0 再新增 51 号官方构建 / 发布 / 审核篇，现为 52 篇
 
 ***
 
@@ -363,12 +403,23 @@ uv run python launcher.py                           # 启动源码版 N.E.K.O �
 
 改完文档或示例准备发版时，逐项过：
 
+**通用**
 - [ ] **Markdown 本地链接**可解析（相对路径存在、锚点存在），无指向已删除文件。
-- [ ] **README 与 SKILL.md 的「铁律」逐条一致**（编号、措辞、方向不得相反）；references/README.md 同步。
+- [ ] **README 与 SKILL.md 的「铁律」逐条一致**（编号、措辞、方向不得相反）；`references/README.md` 同步。
 - [ ] **示例可加载性**：`examples/minimal_plugin/` 的面板 id / context 与 `@ui.context` 一致，保存动作叠加了 `@plugin_entry`，Router 继承了 `PluginRouter`，依赖通道正确。
 - [ ] **敏感字段检查**：全仓无真实 API Key/Token；示例配置只留空值或 `config.example.toml` 占位。
 - [ ] **运行记录**：至少记录一次在目标 SDK 上的 `neko-plugin check <id> --strict` 输出，以及加载/调用入口/打开 UI/Reload 的结果（通过 or 失败原因）。
-- [ ] **版本与日期**：更新首页「已验证目标版本」表的核对日期；`CHANGELOG.md` 路径与当前版本目录名一致。
+
+**4.2.0 起追加（A 版官方口径，见 [51 篇 §6](neko-plugin-dev/references/51-build-publish-and-market-review.md)）**
+- [ ] 先用 `uv run neko-plugin --help` 确认目标版本命令集，A/B 双口径已标注，未把旧版 `add` / `init-repo` 写成新版命令。
+- [ ] `check -r <id>` 通过（含插件测试、包检查、`payload_hash_verified=True`）；`lint <id>` 与 `precheck <id>` 通过。
+- [ ] 构建产物 `manifest.toml` / `metadata.toml` / `payload/` 齐全，`payload/dependencies.toml` 为自动生成未手改。
+- [ ] Market 自动门禁：id 正则、`version` 长度、仓库名 `n.e.k.o_plugin_<id>`、`origin` 指向 GitHub、`.github/workflows/release.yml` 存在、工作区无未提交文件。
+- [ ] 审核**已通过**（不只是已申请）；`publish` 完整跑到「Market 发布成功」，Release 三资产齐备。
+- [ ] tag `v<version>` 与 `plugin.toml.version` 一致；版本说明已写入 `CHANGELOG.md`，首页「版本基线（双口径）」表的核对日期与 commit 号已更新。
+
+**版本与日期**
+- [ ] 更新首页「版本基线（双口径）」表的核对日期；`CHANGELOG.md` 路径与当前版本目录名一致，tag 与徽章版本号一致。
 
 ***
 

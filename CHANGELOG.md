@@ -22,6 +22,11 @@
 - 仍然成立、不要写进文档的：`bus.emit()` / `get_recent()` / `union()`、`on_init` / `on_start` / `on_stop` 等虚构钩子、`[plugin.dependencies]` 内联表、`deps` / `release` 顶层子命令、ZMQ 是 PAIR/JSON。
 - 完整勘误表见 `REVIEW_FIXES.md §9`。
 
+### 仓库介绍同步（同日收尾）
+- `README.md` 全面对齐 4.2.0：简介补构建 / 发布 / 验证 / 审核；事实依据改 A/B 双口径；能力清单补 4 条官方链路；结构图补 51 号专篇（现 52 篇）；快速开始补 `init → check / lint / precheck → build` 与两版 CLI 差异；安装说明删除已过时的 `(4.1.0)` 后缀提示；场景 G/H 改双口径与发布前门禁；部署表修 `build --out` → `-o` 并补 `publish` 段；发布前检查拆为「通用 / 4.2.0 追加 / 版本与日期」三组。
+- `n.e.k.o_plugin_example/README.md`：`init-repo` 改为 A 版 `init` + `create-repo`（保留 B 版对照），补 lint / precheck / build 命令、Market 自动门禁与首次审核语义。
+- GitHub 仓库 About 描述与 topics 同步到 4.2.0；按仓库既有命名补打 `v4.2.0` tag。
+
 ### 仍待验证
 - 官方 `publish → GitHub Release → Market 上架` 全链路、`NEKO_PLUGIN_MARKET_SECURITY_CHECKS=1` 扫描行为、Market 人工审核标准**均未真机验证**（人工审核标准未在公开仓库披露）。
 - 示例 `examples/minimal_plugin/` 的 `check --strict` 实测依据是**旧快照 CLI**；官方 main 新增的 `lint` / `precheck` / `publish` 门禁未跑。真实宿主加载与 Reload 仍未跑。
