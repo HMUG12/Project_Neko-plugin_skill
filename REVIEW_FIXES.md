@@ -90,11 +90,12 @@
 | 静态契约测试 | **7/7 通过**（环境无 pytest，用内置方式逐个调用 `test_*`，与 pytest 断言等价） |
 | TOML 可解析 | 3 个 `.toml` 用 `tomllib`，**0 失败** |
 | 规模 | 86 个文件 / 60 篇 md / 4 个 py / 3 个 toml |
-| **端到端** | ❌ 未跑：`init → check → Reload` 需要真实 N.E.K.O 运行环境，已在 README / SKILL.md / CHANGELOG 声明 |
+| 官方 `check --strict` | ✅ **已实测通过**：`[OK] 0 error(s), 1 warning(s)`（exit 0）。用 `uv run --no-project` 隔离环境 + 本地 N.E.K.O 源码调用官方 CLI；据反馈补齐 `tests/test_smoke.py`、`.vscode/*`、`.github/workflows/*`、`[plugin.sdk]` 与 `.gitignore` 规则。唯一 warning「非独立插件仓库」是示例内嵌于技能包的固有属性，非缺陷 |
+| **运行时端到端** | ❌ 未跑：真实宿主中加载插件、打开设置面板保存、执行 Reload 需要完整 N.E.K.O 运行环境；已在 README / SKILL.md / CHANGELOG 声明 |
 
 ## 8. 后续建议
 
-1. 在真实 SDK 上跑一次 `uv run neko-plugin check minimal_plugin --strict`，把输出记进 CHANGELOG。
+1. ~~跑一次 `check --strict`~~ **已完成**（见 §7）。剩余：在真实宿主中加载示例并跑通 Reload，把输出记进 CHANGELOG。
 2. 实际加载示例、调用入口、打开设置面板保存、执行 Reload，补端到端验证记录。
 3. 若上游 N.E.K.O 主仓库有更新，重新核对 `decorators.py`、`context.py`、`zmq_transport.py`、`schema.py` 与 CLI 注册清单，再更新本表「事实基准」版本。
 4. 本次修复沿用版本号 `4.1.1` 但未打新 tag；如需在 Release 页可见，补一个 `v4.1.1-fix` 或 `v4.1.2` 标签。（原「无法回推上游」问题已解决，见 §0）

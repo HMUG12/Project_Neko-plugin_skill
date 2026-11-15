@@ -2,10 +2,15 @@
 __pycache__/
 *.pyc
 *.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
 
-# 运行时配置（可能含真实密钥）
+# 运行时配置与本地数据（可能含真实密钥）
 config/plugin.toml
 *.local.toml
+store.db
+.env
 
 # 开发用
 tsconfig.json

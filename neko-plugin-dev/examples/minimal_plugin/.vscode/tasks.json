@@ -1,0 +1,32 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "N.E.K.O: check minimal_plugin",
+      "type": "shell",
+      "command": "uv run python -m plugin.neko_plugin_cli.cli check minimal_plugin",
+      "options": {
+        "cwd": "${config:nekoPlugin.repoRoot}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "N.E.K.O: check -r minimal_plugin",
+      "type": "shell",
+      "command": "uv run python -m plugin.neko_plugin_cli.cli check -r minimal_plugin",
+      "options": {
+        "cwd": "${config:nekoPlugin.repoRoot}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "N.E.K.O: build minimal_plugin",
+      "type": "shell",
+      "command": "uv run python -m plugin.neko_plugin_cli.cli build minimal_plugin",
+      "options": {
+        "cwd": "${config:nekoPlugin.repoRoot}"
+      },
+      "problemMatcher": []
+    }
+  ]
+}

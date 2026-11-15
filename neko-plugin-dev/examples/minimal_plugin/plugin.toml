@@ -10,6 +10,11 @@ keywords = ["^示例$", "^minimal"]
 # 插件间依赖写 dependencies = ["other_plugin_id"]；
 # 本示例无插件间依赖，也无 Python 第三方包（见 pyproject.toml）。
 
+# check --strict 会检查 SDK 区间；取值沿用官方 init 模板
+[plugin.sdk]
+recommended = ">=0.1.0,<0.2.0"
+supported = ">=0.1.0,<0.3.0"
+
 [plugin_runtime]
 auto_start = true
 timeout = 10

@@ -344,7 +344,7 @@ uv run neko-plugin build <plugin_id> / install <pkg> / inspect <pkg> / verify <p
 ☐ 用户可配的外部 API 地址要在文档里说明 Key 会被发往该地址
 ☐ 抓取/外部内容回灌 LLM 前有截断与提示注入缓解
 ☐ README / CHANGELOG / tests / pyproject 齐备（--strict 会检查支撑文件）
-☐ 在真实 SDK 上跑一次 init → check → Reload，把结果记进 CHANGELOG
+☐ 在真实 SDK 上跑 check（静态已通过）；加载插件、打开面板保存、执行 Reload 后把结果记进 CHANGELOG
 ```
 
 ---
@@ -352,7 +352,7 @@ uv run neko-plugin build <plugin_id> / install <pkg> / inspect <pkg> / verify <p
 ## 11. 未验证与免责
 
 - `references/` 中的 Python 代码块是摘录片段（方法体单独成块、签名用 `...` 占位），**不是可独立运行的模块**；可复制的完整骨架只有 `examples/minimal_plugin/`。
-- 本技能的示例插件**未在干净环境跑通端到端**；`30` / `37` 等内部机制描述依据的是本地 N.E.K.O 主程序快照，上游变更可能导致细节不同。
+- 本技能的示例插件已通过官方 `neko-plugin check --strict`（0 error / 1 个「非独立插件仓库」预期 warning），但**未在真实宿主中加载、打开面板并 Reload**，因此仍不算端到端验证；`30` / `37` 等内部机制描述依据的是本地 N.E.K.O 主程序快照，上游变更可能导致细节不同。
 - `42` 中的 firecrawl 依赖名、`fc.scrape(...)` 的位置参数与 `doc.metadata_dict` 是否符合当前 PyPI 版本**未核实**；示例已改为零外部依赖版本以免误导。
 - `41` 提到的 `Input type="range"` 能否替代 Slider 未核实；`README.md` 曾宣传 `Slider`，按 `03-ui-settings.md` 的组件表为准。
 - 外部 skill 片段（40–50）无逐条许可/署名说明，引用时请自行确认来源许可。

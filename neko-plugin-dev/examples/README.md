@@ -19,4 +19,4 @@ uv run pytest examples/minimal_plugin/tests
 uv run neko-plugin check minimal_plugin --strict
 ```
 
-> 示例**未在干净环境跑通端到端**。旧版 `web_assistant` 因依赖未核实的 firecrawl API 与多处契约错误已移除；联网抓取相关内容见 `42-web-data-integration.md`，仅作方法论参考。
+> 官方 `check --strict` 已实测通过（0 error / 1 预期 warning，详见 `minimal_plugin/README.md`）；**真实宿主加载与 Reload 仍未跑**。旧版 `web_assistant` 因依赖未核实的 firecrawl API 与多处契约错误已移除；联网抓取相关内容见 `42-web-data-integration.md`，仅作方法论参考。
