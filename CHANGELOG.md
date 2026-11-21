@@ -1,3 +1,15 @@
+## 4.3.1 · 2026-11-21（机器可读版本，供外部钉版引用）
+
+> 配合 `neko-plugin-workshop` 的「文档不进仓库、按锁定版本按需拉取」方案。**正文事实与规则无改动**，52 篇、示例、契约测试全部沿用 4.3.0。
+
+### 变更
+- 新增根目录 `VERSION.txt`（单行 `4.3.1`）。此前版本只存在于 `CHANGELOG.md` 标题与 README 徽章，抓取方没有可解析的 `version_source`；现在锁文件可以直接读它。
+- README 增加「4.3.1 修订说明（可被外部钉版消费）」：写明消费方式是 `source` + `ref`/`commit`（完整 SHA，不钉 tag）+ `computedHash`，正文不随对方仓库分发。
+- `.gitignore` 白名单放行 `VERSION.txt`（本仓库默认忽略全部，漏放行会导致文件根本不进提交）。
+
+### 未改
+- 规则、API 契约、示例代码、`UNVERIFIED.md` 的待审结论均未变；`v4.3.0` tag 指向的 `d55bd0b` 仍是 4.3.0 的定稿。
+
 ## 4.3.0 · 2026-11-15（单一口径 + 官方 init 生成物）
 
 > 依据 GitHub [Issue #2](https://github.com/HMUG12/Project_Neko-plugin_skill/issues/2) 的增量复核清单与复核意见。通过 GitHub Contents API **只读查询**官方 `Project-N-E-K-O/N.E.K.O` main `acfbdbc` 逐条验证，**未克隆、未下载仓库**。

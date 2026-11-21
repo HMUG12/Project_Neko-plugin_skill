@@ -1,11 +1,11 @@
-# N.E.K.O 插件开发 Skill · neko-plugin-dev 4.3.0
+# N.E.K.O 插件开发 Skill · neko-plugin-dev 4.3.1
 <img width="1024" height="1024" alt="20260912123440-c080be1e-2be8996c" src="https://github.com/user-attachments/assets/399b3757-1632-4c1c-b20d-1aac1c84430b" />
 
 
 
-> 一套面向 [N.E.K.O](https://project-neko.online) 插件开发的 Skill 辅助：从骨架搭建、SDK 契约、避坑排查，到**构建打包（`.neko-plugin` / `.neko-bundle`）、官方 `publish` 工作流、分层验证与 Market 首次审核**全流程覆盖。当前 4.3.0 已收拢为**官方 main 单一口径**，并按官方 `init` 模板重建示例支撑文件。
+> 一套面向 [N.E.K.O](https://project-neko.online) 插件开发的 Skill 辅助：从骨架搭建、SDK 契约、避坑排查，到**构建打包（`.neko-plugin` / `.neko-bundle`）、官方 `publish` 工作流、分层验证与 Market 首次审核**全流程覆盖。当前 4.3.1 已收拢为**官方 main 单一口径**，并按官方 `init` 模板重建示例支撑文件；`VERSION.txt` 提供机器可读版本，供外部仓库以「钉 commit + 哈希」的方式按需拉取，不必把正文复制进自己的仓库。
 
-[![Version](https://img.shields.io/badge/version-4.3.0-blueviolet.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-4.3.1-blueviolet.svg)](CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![N.E.K.O SDK](https://img.shields.io/badge/N.E.K.O_SDK-0.1.x-blue.svg)]()
 [![Python](https://img.shields.io/badge/Python-3.11%2B-blue.svg)]()
@@ -309,6 +309,16 @@ uv run neko-plugin publish <id>                     # 打 v<version> tag → Git
 > 用户运行时配置位于用户数据目录（Windows 为 `%LOCALAPPDATA%\N.E.K.O\plugins\<id>\config\plugin.toml`），**不要**把密钥写进源码 manifest 并提交。
 
 详见 [06-deployment.md](neko-plugin-dev/references/06-deployment.md) 和 [17-pyc-cache-trap.md](neko-plugin-dev/references/17-pyc-cache-trap.md)。
+
+***
+
+## 4.3.1 修订说明（可被外部钉版消费）
+
+> 本版**不改任何事实与规则**，只补「怎么被别的仓库按版本引用」所需的机器可读标记，供 `neko-plugin-workshop` 这类仓库以锁文件钉住版本、用时再拉，而不是把 52 篇正文复制进去。
+
+- **`VERSION.txt`**：根目录新增，内容单行 `4.3.1`。此前版本号只写在 `CHANGELOG.md` 的标题和 README 徽章里，抓取方没有可解析的版本来源；`VERSION.txt` 就是给锁文件 `version_source` 用的。
+- **消费方式**：锁文件记 `source`（本仓库）、`ref` / `commit`（40 位完整 SHA，不钉 tag）、`computedHash`（落盘树的哈希），按 SHA 抓取后逐字节校验。正文不随对方仓库分发，也就不存在「同内容两份、改一处忘一处」。
+- **许可**：仍为 MIT，版权人 `未知之致`；引用的仓库需在 `THIRD_PARTY_NOTICES` 保留本仓库署名。
 
 ***
 
